@@ -1,9 +1,13 @@
 // src/pages/ProfilePage.jsx
-/** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
+/** biome-ignore-all lint/a11y/useButtonType: <explanation> */
 import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { getProfileBookings, updateBooking, deleteBooking } from "../api/bookings";
-import { getProfile, updateProfile } from "../api/profiles";
+import { getProfileBookings, deleteBooking, updateBooking } from "../api/bookings";
+import BookingCalendar from "../components/BookingCalendar";
+import { getAuthHeaders } from "../api/auth";
+
+const API = "https://v2.api.noroff.dev";
 
 const fmt = (iso) =>
   new Date(iso).toLocaleDateString(undefined, {
@@ -12,380 +16,338 @@ const fmt = (iso) =>
     day: "numeric",
   });
 
-export default function ProfilePage() {
-  const { profile, loading: authLoading, isAuthed, apiKey } = useAuth();
+function nightsBetween(fromIso, toIso) {
+  const from = new Date(fromIso);
+  const to = new Date(toIso);
+  const ms = to.setHours(0, 0, 0, 0) - from.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round(ms / (1000 * 60 * 60 * 24)));
+}
 
-  // BOOKINGS STATE
-  const [state, setState] = useState({ loading: true, error: null, rows: [] });
-  const [editingId, setEditingId] = useState(null);
-  const [editFields, setEditFields] = useState({ dateFrom: "", dateTo: "", guests: 1 });
-  const [busyId, setBusyId] = useState(null);
-  const [inlineMsg, setInlineMsg] = useState("");
+/** normalize to UTC midnight (safe for server comparisons) */
+function toUtcMidnight(dateLike) {
+  const d = new Date(dateLike);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
 
-  // PROFILE STATE
-  const [pLoading, setPLoading] = useState(true);
-  const [pError, setPError] = useState("");
-  const [pData, setPData] = useState(null);
-  const maskedKey = useMemo(
-    () => (apiKey ? `${String(apiKey).slice(0, 6)}…${String(apiKey).slice(-4)}` : "—"),
-    [apiKey],
+/** we treat ranges as [start, end) */
+function rangesOverlap(aStart, aEnd, bStart, bEnd) {
+  const A1 = toUtcMidnight(aStart);
+  const A2 = toUtcMidnight(aEnd);
+  const B1 = toUtcMidnight(bStart);
+  const B2 = toUtcMidnight(bEnd);
+  return A1 < B2 && B1 < A2;
+}
+
+function hasConflictExcluding(bookings = [], dateFrom, dateTo, excludeId) {
+  return bookings.some(
+    (b) => b.id !== excludeId && rangesOverlap(dateFrom, dateTo, b.dateFrom, b.dateTo),
   );
+}
 
-  // ---- LOAD PROFILE (fresh) ----
-  useEffect(() => {
-    let alive = true;
-    async function loadProfile() {
-      if (authLoading || !isAuthed || !profile?.name) return;
-      setPLoading(true);
-      setPError("");
-      try {
-        const full = await getProfile(profile.name);
-        if (!alive) return;
-        setPData(full);
-      } catch (e) {
-        if (!alive) return;
-        setPError(e?.message || "Failed to load profile");
-      } finally {
-        if (alive) setPLoading(false);
-      }
-    }
-    loadProfile();
-    return () => {
-      alive = false;
-    };
-  }, [authLoading, isAuthed, profile?.name]);
+/** convert Date (local) → ISO at UTC midnight */
+function toIsoZMidnight(date) {
+  const d = new Date(date);
+  const z = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  return z.toISOString();
+}
 
-  // ---- LOAD BOOKINGS ----
+export default function ProfilePage() {
+  const { isAuthed, loading: authLoading, profile } = useAuth();
+
+  const [state, setState] = useState({ loading: true, error: "", rows: [] });
+  const [busyId, setBusyId] = useState(null);
+
+  // EDIT modal state
+  const [edit, setEdit] = useState({
+    open: false,
+    booking: null,
+    range: { from: null, to: null },
+    guests: 1,
+    venueBookings: [],
+    loading: false,
+    saving: false,
+    error: "",
+  });
+
+  // Load "my bookings"
   useEffect(() => {
-    let alive = true;
     async function run() {
-      if (authLoading) return;
-      if (!isAuthed || !profile?.name) {
-        setState({ loading: false, error: "You must be logged in.", rows: [] });
-        return;
-      }
-
+      if (!isAuthed || !profile?.name) return;
       try {
-        const res = await getProfileBookings(profile.name, {
-          includeVenue: true,
-          includeCustomer: true,
-          sort: "dateFrom",
-          sortOrder: "asc",
-          page: 1,
-          limit: 50,
-        });
-        if (!alive) return;
-        setState({ loading: false, error: null, rows: res?.data ?? [] });
+        setState((s) => ({ ...s, loading: true, error: "" }));
+        const rows = await getProfileBookings(profile.name, { includeVenue: true, limit: 100 });
+        setState({ loading: false, error: "", rows: Array.isArray(rows) ? rows : [] });
       } catch (err) {
-        if (!alive) return;
-        setState({ loading: false, error: err.message || "Failed to load", rows: [] });
+        setState({ loading: false, error: err?.message || "Failed to load bookings", rows: [] });
       }
     }
     run();
-    return () => {
-      alive = false;
-    };
-  }, [authLoading, isAuthed, profile?.name]);
+  }, [isAuthed, profile?.name]);
 
-  // ---- PROFILE SAVE ----
-  async function onSaveProfile(e) {
-    e.preventDefault();
-    if (!pData || !profile?.name) return;
+  const todayMid = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
-    setPError("");
-    setPLoading(true);
+  const upcoming = useMemo(
+    () =>
+      state.rows
+        .filter((b) => new Date(b.dateTo) >= todayMid)
+        .sort((a, b) => new Date(a.dateFrom) - new Date(b.dateFrom)),
+    [state.rows, todayMid],
+  );
 
-    const payload = {
-      bio: pData?.bio ?? "",
-      avatar: pData?.avatar?.url
-        ? { url: pData.avatar.url, alt: pData?.avatar?.alt || pData?.name || "Avatar" }
-        : undefined,
-    };
+  const past = useMemo(
+    () =>
+      state.rows
+        .filter((b) => new Date(b.dateTo) < todayMid)
+        .sort((a, b) => new Date(b.dateFrom) - new Date(a.dateFrom)),
+    [state.rows, todayMid],
+  );
 
+  async function onCancel(bookingId) {
+    if (!bookingId) return;
+    const ok = confirm("Cancel this booking?");
+    if (!ok) return;
     try {
-      const saved = await updateProfile(profile.name, payload);
-      setPData(saved);
-    } catch (e) {
-      setPError(e?.response?.data?.errors?.[0]?.message || e?.message || "Update failed");
+      setBusyId(bookingId);
+      await deleteBooking(bookingId);
+      setState((s) => ({ ...s, rows: s.rows.filter((r) => r.id !== bookingId) }));
+    } catch (err) {
+      alert(err?.message || "Failed to cancel booking");
     } finally {
-      setPLoading(false);
+      setBusyId(null);
     }
   }
 
-  // ---- BOOKINGS EDIT/DELETE ----
-  function startEdit(b) {
-    setEditingId(b.id);
-    setInlineMsg("");
-    setEditFields({
-      dateFrom: b.dateFrom ? new Date(b.dateFrom).toISOString().slice(0, 10) : "",
-      dateTo: b.dateTo ? new Date(b.dateTo).toISOString().slice(0, 10) : "",
-      guests: b.guests ?? 1,
+  // --- EDIT FLOW ----------------------------------------------------
+
+  function openEdit(b) {
+    if (!b?.venue?.id) {
+      alert("This booking has no linked venue id.");
+      return;
+    }
+    setEdit({
+      open: true,
+      booking: b,
+      range: { from: new Date(b.dateFrom), to: new Date(b.dateTo) },
+      guests: b.guests || 1,
+      venueBookings: [],
+      loading: true,
+      saving: false,
+      error: "",
+    });
+
+    // load latest bookings for the venue so the calendar can disable them
+    fetch(`${API}/holidaze/venues/${b.venue.id}?_bookings=true`, {
+      headers: { ...getAuthHeaders() },
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Failed to load venue (${res.status})`);
+        const { data } = await res.json();
+        setEdit((e) => ({
+          ...e,
+          loading: false,
+          venueBookings: data?.bookings || [],
+        }));
+      })
+      .catch((err) => {
+        console.error("[edit] venue fetch failed", err);
+        setEdit((e) => ({ ...e, loading: false, error: "Could not load venue bookings." }));
+      });
+  }
+
+  function closeEdit() {
+    setEdit({
+      open: false,
+      booking: null,
+      range: { from: null, to: null },
+      guests: 1,
+      venueBookings: [],
+      loading: false,
+      saving: false,
+      error: "",
     });
   }
 
-  function cancelEdit() {
-    setEditingId(null);
-    setInlineMsg("");
-  }
-
-  function validateEdit() {
-    const { dateFrom, dateTo, guests } = editFields;
-    if (!dateFrom || !dateTo) return "Select both start and end dates.";
-    const start = new Date(dateFrom);
-    const end = new Date(dateTo);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (start < today) return "Start date cannot be in the past.";
-    if (end <= start) return "End date must be after start date.";
-    if (!guests || guests < 1) return "Guests must be at least 1.";
-    return "";
-  }
-
-  async function saveEdit(id) {
-    const err = validateEdit();
-    if (err) {
-      setInlineMsg(err);
+  async function saveEdit() {
+    if (!edit.booking) return;
+    if (!edit.range?.from || !edit.range?.to) {
+      setEdit((e) => ({ ...e, error: "Please select both start and end dates." }));
+      return;
+    }
+    if (edit.guests < 1) {
+      setEdit((e) => ({ ...e, error: "Guests must be at least 1." }));
       return;
     }
 
-    setBusyId(id);
-    setInlineMsg("");
-    try {
-      const payload = {
-        dateFrom: new Date(editFields.dateFrom).toISOString(),
-        dateTo: new Date(editFields.dateTo).toISOString(),
-        guests: Number(editFields.guests),
-      };
-      const updated = await updateBooking(id, payload);
+    const bookingId = edit.booking.id;
+    const venueId = edit.booking.venue?.id;
+    const dateFromIso = toIsoZMidnight(edit.range.from);
+    const dateToIso = toIsoZMidnight(edit.range.to);
 
-      // Optimistic update of local list
+    try {
+      setEdit((e) => ({ ...e, saving: true, error: "" }));
+
+      // Fresh preflight: re-fetch venue bookings to avoid race conditions
+      const pre = await fetch(`${API}/holidaze/venues/${venueId}?_bookings=true`, {
+        headers: { ...getAuthHeaders() },
+      });
+      if (!pre.ok) throw new Error(`Preflight failed (${pre.status})`);
+      const { data: v } = await pre.json();
+
+      if (hasConflictExcluding(v?.bookings || [], dateFromIso, dateToIso, bookingId)) {
+        setEdit((e) => ({
+          ...e,
+          saving: false,
+          error: "Those dates overlap another booking for this venue.",
+        }));
+        return;
+      }
+
+      const updated = await updateBooking(bookingId, {
+        dateFrom: dateFromIso,
+        dateTo: dateToIso,
+        guests: edit.guests,
+      });
+
+      // Merge updated fields into local state
       setState((s) => ({
         ...s,
-        rows: s.rows.map((b) => (b.id === id ? { ...b, ...updated } : b)),
+        rows: s.rows.map((r) =>
+          r.id === bookingId
+            ? {
+                ...r,
+                dateFrom: updated.dateFrom ?? dateFromIso,
+                dateTo: updated.dateTo ?? dateToIso,
+                guests: updated.guests ?? edit.guests,
+              }
+            : r,
+        ),
       }));
 
-      setInlineMsg("Saved!");
-      setEditingId(null);
-    } catch (e) {
-      setInlineMsg(e?.response?.data?.errors?.[0]?.message || e?.message || "Update failed");
-    } finally {
-      setBusyId(null);
+      closeEdit();
+    } catch (err) {
+      console.error("[edit] save failed", err);
+      setEdit((e) => ({
+        ...e,
+        saving: false,
+        error: err?.message || "Failed to update booking.",
+      }));
     }
   }
 
-  async function removeBooking(id) {
-    if (!confirm("Delete this booking? This cannot be undone.")) return;
-    setBusyId(id);
-    setInlineMsg("");
-    try {
-      await deleteBooking(id);
-      setState((s) => ({ ...s, rows: s.rows.filter((b) => b.id !== id) }));
-    } catch (e) {
-      setInlineMsg(e?.response?.data?.errors?.[0]?.message || e?.message || "Delete failed");
-    } finally {
-      setBusyId(null);
-    }
-  }
+  // -----------------------------------------------------------------
 
-  // ---- RENDER ----
-  if (authLoading || state.loading) return <div className="p-4">Loading…</div>;
-  if (state.error) return <div className="p-4 text-red-600">Error: {state.error}</div>;
+  if (authLoading) return <p className="p-6">Loading your profile…</p>;
+  if (!isAuthed) {
+    return (
+      <div className="p-6">
+        <p className="mb-2">You must be logged in to view your bookings.</p>
+        <Link to="/login" className="inline-block px-4 py-2 rounded-lg bg-gray-900 text-white">
+          Log in
+        </Link>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-8">
-      {/* Profile Info + Editor */}
-      <section className="rounded-xl border bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold mb-4">Profile</h1>
+    <div className="p-6 md:p-10 space-y-8">
+      <header className="space-y-1">
+        <h1 className="text-3xl md:text-4xl font-bold">My Profile</h1>
+        <p className="text-gray-600">
+          Signed in as <span className="font-medium">{profile?.name}</span>
+        </p>
+      </header>
 
-        <div className="flex items-start gap-4">
-          <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 border">
-            <img
-              src={pData?.avatar?.url || "https://placehold.co/200x200?text=Avatar"}
-              alt={pData?.avatar?.alt || pData?.name || "Avatar"}
-              className="w-full h-full object-cover"
-            />
-          </div>
-
-          <div className="flex-1 grid gap-1">
-            <p>
-              <span className="font-medium">Name:</span> {pData?.name || profile?.name}
-            </p>
-            <p>
-              <span className="font-medium">Email:</span> {pData?.email || profile?.email}
-            </p>
-            <p className="text-sm text-gray-500">
-              <span className="font-medium">API Key:</span> {maskedKey}
-            </p>
-          </div>
-        </div>
-
-        <form onSubmit={onSaveProfile} className="mt-6 grid gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Avatar URL</label>
-            <input
-              type="url"
-              value={pData?.avatar?.url || ""}
-              onChange={(e) =>
-                setPData((d) => ({ ...d, avatar: { ...(d?.avatar || {}), url: e.target.value } }))
-              }
-              placeholder="https://…"
-              className="w-full rounded border px-2 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Avatar Alt</label>
-            <input
-              type="text"
-              value={pData?.avatar?.alt || ""}
-              onChange={(e) =>
-                setPData((d) => ({ ...d, avatar: { ...(d?.avatar || {}), alt: e.target.value } }))
-              }
-              placeholder="Your avatar description"
-              className="w-full rounded border px-2 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Bio</label>
-            <textarea
-              value={pData?.bio || ""}
-              onChange={(e) => setPData((d) => ({ ...d, bio: e.target.value }))}
-              rows={3}
-              className="w-full rounded border px-2 py-2"
-              placeholder="Tell guests about yourself…"
-            />
-          </div>
-
-          {pError && <p className="text-sm text-red-600">{pError}</p>}
-
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={pLoading}
-              className="px-4 py-2 rounded bg-gray-900 text-white disabled:opacity-60"
-            >
-              {pLoading ? "Saving…" : "Save changes"}
-            </button>
-          </div>
-        </form>
+      {/* UPCOMING */}
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold">Upcoming bookings</h2>
+        {state.loading ? (
+          <p>Loading bookings…</p>
+        ) : state.error ? (
+          <p className="text-red-600">{state.error}</p>
+        ) : upcoming.length === 0 ? (
+          <p className="text-gray-600">You have no upcoming bookings.</p>
+        ) : (
+          <ul className="space-y-3">
+            {upcoming.map((b) => {
+              const v = b.venue || {};
+              const nights = nightsBetween(b.dateFrom, b.dateTo);
+              return (
+                <li
+                  key={b.id}
+                  className="border rounded-2xl p-4 bg-white flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+                >
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold">
+                      {v.id ? (
+                        <Link to={`/venues/${v.id}`} className="underline">
+                          {v.name || "Venue"}
+                        </Link>
+                      ) : (
+                        v.name || "Venue"
+                      )}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {fmt(b.dateFrom)} → {fmt(b.dateTo)} • {nights} night{nights === 1 ? "" : "s"}{" "}
+                      • {b.guests} guest{b.guests === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openEdit(b)}
+                      className="px-3 py-2 rounded-lg border font-medium"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => onCancel(b.id)}
+                      disabled={busyId === b.id}
+                      className="px-3 py-2 rounded-lg bg-red-600 text-white font-semibold disabled:opacity-60"
+                    >
+                      {busyId === b.id ? "Cancelling…" : "Cancel"}
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
 
-      {/* Bookings */}
+      {/* PAST */}
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold">My bookings</h2>
-
-        {state.rows.length === 0 ? (
-          <div className="rounded-lg border border-gray-300 bg-gray-50 p-6 text-center text-gray-600">
-            No bookings yet
-          </div>
+        <h2 className="text-2xl font-semibold">Past bookings</h2>
+        {state.loading ? (
+          <p>Loading…</p>
+        ) : past.length === 0 ? (
+          <p className="text-gray-600">No past bookings yet.</p>
         ) : (
-          <ul className="grid gap-4">
-            {state.rows.map((b) => {
-              const isEditing = editingId === b.id;
+          <ul className="space-y-3">
+            {past.map((b) => {
+              const v = b.venue || {};
+              const nights = nightsBetween(b.dateFrom, b.dateTo);
               return (
-                <li key={b.id} className="rounded-lg border p-4 shadow-sm bg-white space-y-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="font-medium">{b?.venue?.name ?? "—"}</div>
-
-                      {!isEditing ? (
-                        <div className="text-sm opacity-80">
-                          {fmt(b.dateFrom)} → {fmt(b.dateTo)} • {b.guests} guest
-                          {b.guests === 1 ? "" : "s"}
-                        </div>
-                      ) : (
-                        <div className="grid md:grid-cols-3 gap-2 mt-1">
-                          <label className="text-sm">
-                            <span className="block mb-1">From</span>
-                            <input
-                              type="date"
-                              value={editFields.dateFrom}
-                              onChange={(e) =>
-                                setEditFields((f) => ({ ...f, dateFrom: e.target.value }))
-                              }
-                              className="w-full rounded border px-2 py-1"
-                              required
-                            />
-                          </label>
-                          <label className="text-sm">
-                            <span className="block mb-1">To</span>
-                            <input
-                              type="date"
-                              value={editFields.dateTo}
-                              onChange={(e) =>
-                                setEditFields((f) => ({ ...f, dateTo: e.target.value }))
-                              }
-                              className="w-full rounded border px-2 py-1"
-                              required
-                            />
-                          </label>
-                          <label className="text-sm">
-                            <span className="block mb-1">Guests</span>
-                            <input
-                              type="number"
-                              min={1}
-                              value={editFields.guests}
-                              onChange={(e) =>
-                                setEditFields((f) => ({ ...f, guests: Number(e.target.value) }))
-                              }
-                              className="w-full rounded border px-2 py-1"
-                              required
-                            />
-                          </label>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex gap-2">
-                      {!isEditing ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => startEdit(b)}
-                            className="px-3 py-1 rounded border hover:bg-gray-50"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removeBooking(b.id)}
-                            disabled={busyId === b.id}
-                            className="px-3 py-1 rounded border text-red-600 hover:bg-red-50 disabled:opacity-60"
-                          >
-                            {busyId === b.id ? "Deleting…" : "Delete"}
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => saveEdit(b.id)}
-                            disabled={busyId === b.id}
-                            className="px-3 py-1 rounded bg-gray-900 text-white hover:opacity-90 disabled:opacity-60"
-                          >
-                            {busyId === b.id ? "Saving…" : "Save"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={cancelEdit}
-                            className="px-3 py-1 rounded border hover:bg-gray-50"
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {isEditing && inlineMsg && (
-                    <p
-                      className={`text-sm mt-1 ${
-                        inlineMsg.toLowerCase().includes("save") ? "text-green-700" : "text-red-600"
-                      }`}
-                    >
-                      {inlineMsg}
+                <li
+                  key={b.id}
+                  className="border rounded-2xl p-4 bg-gray-50 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+                >
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold">{v.name || "Venue"}</h3>
+                    <p className="text-sm text-gray-600">
+                      {fmt(b.dateFrom)} → {fmt(b.dateTo)} • {nights} night{nights === 1 ? "" : "s"}{" "}
+                      • {b.guests} guest{b.guests === 1 ? "" : "s"}
                     </p>
+                  </div>
+                  {v.id && (
+                    <Link
+                      to={`/venues/${v.id}`}
+                      className="px-3 py-2 rounded-lg border font-medium"
+                    >
+                      Book again
+                    </Link>
                   )}
                 </li>
               );
@@ -393,6 +355,71 @@ export default function ProfilePage() {
           </ul>
         )}
       </section>
+
+      {/* EDIT MODAL */}
+      {edit.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-lg space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold">Edit booking</h3>
+              <button onClick={closeEdit} className="text-gray-500 hover:text-gray-800">
+                ✕
+              </button>
+            </div>
+
+            {edit.loading ? (
+              <p>Loading venue bookings…</p>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <span className="block text-sm font-medium">Choose new dates</span>
+                  <BookingCalendar
+                    bookings={edit.venueBookings}
+                    selected={edit.range}
+                    onSelect={(next) =>
+                      setEdit((e) => ({
+                        ...e,
+                        range: next || { from: null, to: null },
+                        error: "",
+                      }))
+                    }
+                    minDate={new Date()}
+                  />
+                </div>
+
+                <label className="text-sm block">
+                  <span className="block mb-1">Guests</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={edit.guests}
+                    onChange={(e) =>
+                      setEdit((s) => ({ ...s, guests: Number(e.target.value), error: "" }))
+                    }
+                    className="w-full rounded border px-2 py-1"
+                    required
+                  />
+                </label>
+
+                {edit.error && <p className="text-sm text-red-600">{edit.error}</p>}
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button onClick={closeEdit} className="px-3 py-2 rounded-lg border">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveEdit}
+                    disabled={edit.saving}
+                    className="px-4 py-2 rounded-lg bg-gray-900 text-white font-semibold disabled:opacity-60"
+                  >
+                    {edit.saving ? "Saving…" : "Save changes"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
