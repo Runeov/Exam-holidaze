@@ -1,7 +1,7 @@
 // src/pages/VenuesPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { getAllVenues } from "../lib/api";
+import { getFeaturedVenues, getAllVenues, getVenues } from "../api/venues";
 import VenueCard from "../components/VenueCard";
 
 function useQuery() {

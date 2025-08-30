@@ -2,16 +2,12 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
-
 import NavBar from "./components/NavBar";
-
 import HomePage from "./pages/HomePage";
 import VenuesPage from "./pages/VenuesPage";
 import VenueDetailsPage from "./pages/VenueDetailsPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
-
-// These live at src/ (root)
 import ProfilePage from "./ProfilePage";
 import ProtectedRoute from "./ProtectedRoute";
 

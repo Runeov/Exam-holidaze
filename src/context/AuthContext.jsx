@@ -1,6 +1,7 @@
 // src/context/AuthContext.jsx
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { registerUser, loginUser, logoutUser as clearSession, readSession } from "../utils/auth";
+import { readSession } from "../utils/session";
+import { register as apiRegister, login as apiLogin, logout as apiLogout } from "../api/auth";
 
 const AuthContext = createContext(null);
 
@@ -11,7 +12,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Hydrate from localStorage once
+  // Hydrate once from localStorage on mount
   useEffect(() => {
     const { token: t, apiKey: k, profile: p } = readSession();
     console.log("[Auth] hydrate", { hasToken: !!t, hasKey: !!k, hasProfile: !!p });
@@ -25,10 +26,10 @@ export function AuthProvider({ children }) {
     setError("");
     try {
       console.log("[Auth] register()", { email, venueManager });
-      await registerUser({ name, email, password, venueManager });
-      // DX: auto-login after register
-      const { token: t, apiKey: k, profile: p } = await handleLogin({ email, password });
-      return { ok: true, token: t, apiKey: k, profile: p };
+      await apiRegister({ name, email, password, venueManager });
+      // DX: auto-login after successful register
+      const res = await handleLogin({ email, password });
+      return res.ok ? res : { ok: false, error: "Auto-login failed" };
     } catch (e) {
       console.error("[Auth] register error", e);
       setError(e.message);
@@ -40,7 +41,7 @@ export function AuthProvider({ children }) {
     setError("");
     try {
       console.log("[Auth] login()", { email });
-      const { token: t, apiKey: k, profile: p } = await loginUser({ email, password });
+      const { token: t, apiKey: k, profile: p } = await apiLogin({ email, password });
       setToken(t);
       setApiKey(k);
       setProfile(p);
@@ -54,13 +55,13 @@ export function AuthProvider({ children }) {
 
   function handleLogout() {
     console.log("[Auth] logout()");
-    clearSession();
+    apiLogout();
     setToken("");
     setApiKey("");
     setProfile(null);
   }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  // biome-ignore lint/correctness/useExhaustiveDependencies: provider value should only update when its deps change
   const value = useMemo(
     () => ({
       token,

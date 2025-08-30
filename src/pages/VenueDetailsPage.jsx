@@ -1,7 +1,7 @@
 // src/pages/VenueDetailsPage.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getVenueById } from "../lib/api";
+import { getVenueById } from "../api/venues";
 
 export default function VenueDetailsPage() {
   const { id } = useParams();
