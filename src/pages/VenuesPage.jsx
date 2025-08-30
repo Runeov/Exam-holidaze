@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getFeaturedVenues, getAllVenues, getVenues } from "../api/venues";
 import VenueCard from "../components/VenueCard";
+import { useAuth } from "../context/AuthContext";
 
 function useQuery() {
   const { search } = useLocation();
@@ -33,7 +34,6 @@ export default function VenuesPage() {
       try {
         setStatus("loading");
         const all = await getAllVenues({ perRequest: 100, maxPages: 200 }); // 🔥 fetch ALL
-        console.log("📊 total venues fetched:", all.length);
 
         const filtered = all.filter((v) => {
           if (!q) return true;
@@ -100,7 +100,7 @@ export default function VenuesPage() {
             value={perPage}
             onChange={(e) => {
               const v = Number(e.target.value);
-              console.log("📑 perPage ->", v);
+
               setParam("perPage", v);
             }}
             className="rounded border border-gray-300 px-2 py-1"

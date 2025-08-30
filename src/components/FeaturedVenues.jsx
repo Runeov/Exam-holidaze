@@ -12,7 +12,7 @@ export default function FeaturedVenues() {
       try {
         setStatus("loading");
         const data = await getFeaturedVenues();
-        console.log("🌟 featured venues loaded:", data?.length);
+
         setVenues(data);
         setStatus("idle");
       } catch (e) {

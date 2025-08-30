@@ -28,12 +28,12 @@ export default function RegisterForm() {
       return;
     }
     setSubmitting(true);
-    const res = await register(form); // auto-login happens in context
+    const res = await register(form);
     setSubmitting(false);
     if (!res.ok) {
       setFormError(res.error || "Registration failed");
     } else {
-      navigate("/profile"); // ✅ redirect on success
+      navigate("/profile");
     }
   }
 

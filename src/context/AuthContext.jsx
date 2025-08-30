@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { readSession } from "../utils/session";
 import { register as apiRegister, login as apiLogin, logout as apiLogout } from "../api/auth";
+import axios from "axios";
 
 const AuthContext = createContext(null);
 
@@ -15,7 +16,6 @@ export function AuthProvider({ children }) {
   // Hydrate once from localStorage on mount
   useEffect(() => {
     const { token: t, apiKey: k, profile: p } = readSession();
-    console.log("[Auth] hydrate", { hasToken: !!t, hasKey: !!k, hasProfile: !!p });
     setToken(t || "");
     setApiKey(k || "");
     setProfile(p || null);
@@ -25,13 +25,11 @@ export function AuthProvider({ children }) {
   async function handleRegister({ name, email, password, venueManager = false }) {
     setError("");
     try {
-      console.log("[Auth] register()", { email, venueManager });
       await apiRegister({ name, email, password, venueManager });
-      // DX: auto-login after successful register
+      // Auto-login after register
       const res = await handleLogin({ email, password });
       return res.ok ? res : { ok: false, error: "Auto-login failed" };
     } catch (e) {
-      console.error("[Auth] register error", e);
       setError(e.message);
       return { ok: false, error: e.message };
     }
@@ -40,28 +38,25 @@ export function AuthProvider({ children }) {
   async function handleLogin({ email, password }) {
     setError("");
     try {
-      console.log("[Auth] login()", { email });
       const { token: t, apiKey: k, profile: p } = await apiLogin({ email, password });
       setToken(t);
       setApiKey(k);
       setProfile(p);
       return { ok: true, token: t, apiKey: k, profile: p };
     } catch (e) {
-      console.error("[Auth] login error", e);
       setError(e.message);
       return { ok: false, error: e.message };
     }
   }
 
   function handleLogout() {
-    console.log("[Auth] logout()");
     apiLogout();
     setToken("");
     setApiKey("");
     setProfile(null);
   }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: provider value should only update when its deps change
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const value = useMemo(
     () => ({
       token,
@@ -69,7 +64,7 @@ export function AuthProvider({ children }) {
       profile,
       loading,
       error,
-      isAuthed: Boolean(token),
+      isAuthed: Boolean(token && apiKey), // ✅ reliable flag
       register: handleRegister,
       login: handleLogin,
       logout: handleLogout,

@@ -13,7 +13,6 @@ export default function SearchBar() {
     if (q) params.set("q", q);
     if (guests) params.set("guests", guests);
     const url = `/venues?${params.toString()}`;
-    console.log("🔍 search submit", { q, guests, url });
     navigate(url); // ✅ go to /venues
   }
 
@@ -27,10 +26,7 @@ export default function SearchBar() {
         type="text"
         placeholder="City, region or venue name"
         value={q}
-        onChange={(e) => {
-          console.log("✏️ q:", e.target.value);
-          setQ(e.target.value);
-        }}
+        onChange={(e) => setQ(e.target.value)}
         className="col-span-3 rounded-xl border border-gray-300 px-4 py-3"
       />
       <input
@@ -39,7 +35,6 @@ export default function SearchBar() {
         value={guests}
         onChange={(e) => {
           const v = Number(e.target.value || 1);
-          console.log("👥 guests:", v);
           setGuests(v);
         }}
         className="col-span-1 rounded-xl border border-gray-300 px-4 py-3"
