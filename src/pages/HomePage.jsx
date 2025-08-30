@@ -3,9 +3,7 @@ import SearchBar from "../components/SearchBar";
 import FeaturedVenues from "../components/FeaturedVenues";
 
 export default function HomePage() {
-  useEffect(() => {
-    console.log("🏠 HomePage mounted");
-  }, []);
+  useEffect(() => {}, []);
 
   return (
     <div className="p-6 md:p-10 space-y-8">

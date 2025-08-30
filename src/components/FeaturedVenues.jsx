@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom"; // ✅ use router link
-import { getFeaturedVenues } from "../lib/api";
+import { getFeaturedVenues, getAllVenues, getVenues } from "../api/venues";
 import VenueCard from "./VenueCard";
 
 export default function FeaturedVenues() {
@@ -12,7 +12,7 @@ export default function FeaturedVenues() {
       try {
         setStatus("loading");
         const data = await getFeaturedVenues();
-        console.log("🌟 featured venues loaded:", data?.length);
+
         setVenues(data);
         setStatus("idle");
       } catch (e) {
