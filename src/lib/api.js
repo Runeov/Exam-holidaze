@@ -95,3 +95,11 @@ export async function getVenues({ limit = 100 } = {}) {
   const payload = await getVenuesPage({ page: 1, limit });
   return payload?.data ?? [];
 }
+
+export async function getVenueById(id) {
+  const url = `${BASE}/venues/${id}`;
+  console.log("➡️ GET", url);
+  const { data } = await axios.get(url);
+  // v2 returns { data: { ...venue } }
+  return data?.data ?? null;
+}
