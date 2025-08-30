@@ -36,3 +36,18 @@ export async function login({ email, password }) {
 export function logout() {
   clearSession();
 }
+
+// ✅ Canonical headers for Noroff v2
+export function getAuthHeaders(extra = {}) {
+  const { token, apiKey } = readSession();
+  if (!token || !apiKey) {
+    console.error("❌ Missing authentication details.", { hasToken: !!token, hasKey: !!apiKey });
+    return null;
+  }
+  return {
+    Authorization: `Bearer ${token}`,
+    "X-Noroff-API-Key": apiKey,
+    "Content-Type": "application/json",
+    ...extra,
+  };
+}
