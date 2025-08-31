@@ -38,20 +38,33 @@ export default function VenueDetailsPage() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
     let on = true;
+
     (async () => {
       try {
         setStatus("loading");
+        // ✅ Set loading title
+        document.title = "Holidaze | Venue";
+
         const res = await getVenue(id, { withBookings: true, withOwner: true }, auth);
         const data = res?.data?.data;
+
         if (on) {
           setVenue(data || null);
           setStatus("idle");
+
+          // ✅ Set title to venue name (fallback = "Venue")
+          document.title = `Holidaze | ${data?.name || "Venue"}`;
         }
       } catch (err) {
         console.error("❌ details fetch failed", err);
-        if (on) setStatus("error");
+        if (on) {
+          setStatus("error");
+          // ✅ Error title
+          document.title = "Holidaze | Error";
+        }
       }
     })();
+
     return () => {
       on = false;
     };

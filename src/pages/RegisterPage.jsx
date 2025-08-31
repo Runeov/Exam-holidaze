@@ -10,6 +10,7 @@ export default function RegisterPage() {
 
   // If already logged in (after successful register), go to profile
   useEffect(() => {
+    document.title = "Holidaze | Register";
     if (user) navigate("/profile", { replace: true });
   }, [user, navigate]);
 

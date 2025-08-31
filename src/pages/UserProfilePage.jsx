@@ -17,15 +17,27 @@ export default function UserProfilePage() {
           withBookings: true,
           withVenues: true,
         });
-        setUser(res?.data?.data ?? res?.data);
+        const profile = res?.data?.data ?? res?.data;
+        setUser(profile);
         setStatus("idle");
+
+        // ✅ Set document title to profile name (with fallback)
+        document.title = `Holidaze | ${profile?.name || "User"}`;
       } catch (err) {
         console.error("Failed to load user profile", err);
         setError("Could not load user profile.");
         setStatus("error");
+
+        // fallback title on error
+        document.title = "Holidaze | Error";
       }
     }
-    if (name) fetchUser();
+
+    if (name) {
+      // While loading
+      document.title = "Holidaze | Profile";
+      fetchUser();
+    }
   }, [name]);
 
   if (status === "loading") return <p className="p-6">Loading profile…</p>;

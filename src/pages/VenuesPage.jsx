@@ -30,6 +30,9 @@ const IMG_FALLBACK =
 
 // Reusable image with blur-up + fallback
 export function SmartImage({ url, alt, eager = false, width = 800, height = 500 }) {
+  useEffect(() => {
+    document.title = "Holidaze | Home";
+  }, []);
   const [loaded, setLoaded] = useState(false);
 
   // guard if no url

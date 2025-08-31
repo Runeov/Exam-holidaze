@@ -8,7 +8,10 @@ export default function NavBar() {
   const isManager = loggedIn && profile?.venueManager;
 
   return (
-    <nav className="flex justify-between items-center px-6 py-4 bg-white border-b">
+    <nav
+      aria-label="Main navigation"
+      className="flex justify-between items-center px-6 py-4 bg-white border-b"
+    >
       <Link to="/" className="text-lg font-bold">
         Holidaze
       </Link>

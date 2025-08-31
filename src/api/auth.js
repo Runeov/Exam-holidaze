@@ -1,14 +1,8 @@
-// src/api/auth.js
-
-import { showAlert } from "../helpers/AlarmWarnings.jsx";
 import { clearSession, readSession, writeSession } from "../utils/session.js";
 import { httpGet, httpPost } from "./http.js";
 
 const BASE = "/auth";
 
-/**
- * Register a new user
- */
 export async function register({ email, password, name, venueManager = false }) {
   const payload = { email, password, name, ...(venueManager ? { venueManager: true } : {}) };
   const res = await httpPost(`${BASE}/register`, payload);
@@ -16,10 +10,6 @@ export async function register({ email, password, name, venueManager = false }) 
   return res?.data;
 }
 
-/**
- * Login then ensure an API key exists.
- * Returns { token, profile, apiKey }
- */
 export async function login({ email, password }) {
   const res = await httpPost(`${BASE}/login`, { email, password }, { params: { _holidaze: true } });
 

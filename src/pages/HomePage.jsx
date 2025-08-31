@@ -3,10 +3,12 @@ import FeaturedVenues from "../components/FeaturedVenues";
 import SearchBar from "../components/SearchBar";
 
 export default function HomePage() {
-  useEffect(() => {}, []);
+  useEffect(() => {
+    document.title = "Holidaze | Home";
+  }, []);
 
   return (
-    <div className="p-6 md:p-10 space-y-8">
+    <main className="p-6 md:p-10 space-y-8">
       <header className="space-y-2">
         <h1 className="text-4xl font-bold">Welcome to Holidaze</h1>
         <p className="text-gray-600">
@@ -21,6 +23,6 @@ export default function HomePage() {
       <section>
         <FeaturedVenues />
       </section>
-    </div>
+    </main>
   );
 }
