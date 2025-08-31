@@ -5,7 +5,8 @@
 /** biome-ignore-all lint/a11y/useButtonType: <explanation> */
 
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+
 import { Link, useSearchParams } from "react-router-dom";
 import { listVenues } from "../api/venues";
 
@@ -26,6 +27,52 @@ const IMG_FALLBACK =
       </g>
     </svg>`,
   );
+
+// Reusable image with blur-up + fallback
+export function SmartImage({ url, alt, eager = false, width = 800, height = 500 }) {
+  const [loaded, setLoaded] = useState(false);
+
+  // guard if no url
+  const src = url || IMG_FALLBACK;
+
+  return (
+    <img
+      src={src}
+      srcSet={
+        url
+          ? `
+            ${url}?w=400 400w,
+            ${url}?w=800 800w,
+            ${url}?w=1200 1200w
+          `
+          : undefined
+      }
+      sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw"
+      alt={alt || ""}
+      width={width}
+      height={height}
+      loading={eager ? "eager" : "lazy"}
+      fetchPriority={eager ? "high" : "low"} // ✅ React prop
+      decoding="async"
+      onLoad={() => setLoaded(true)}
+      onError={(e) => {
+        const img = e.currentTarget;
+        if (img.src !== IMG_FALLBACK) {
+          img.src = IMG_FALLBACK;
+          img.removeAttribute("srcset");
+          // ensure the rendered attribute is low:
+          img.setAttribute("fetchpriority", "low");
+          setLoaded(true);
+        }
+      }}
+      className={[
+        "w-full h-full object-cover transition",
+        loaded ? "opacity-100 blur-0 scale-100" : "opacity-80 blur-sm scale-[1.02]",
+        "duration-300 will-change-transform will-change-filter",
+      ].join(" ")}
+    />
+  );
+}
 
 const DEFAULT_LIMIT = 25;
 const API_PAGE_LIMIT = 100;
@@ -282,7 +329,7 @@ export default function VenuesPage() {
           ))}
 
         {pageRows.map((v, i) => {
-          const isAboveFold = i < 6; // prioritize first 6 images (adjust to taste)
+          const isAboveFold = i < 6; // first 6 get eager/high
 
           return (
             <li
@@ -291,38 +338,15 @@ export default function VenuesPage() {
             >
               <Link to={`/venues/${v.id}`} className="block">
                 <div className="aspect-[16/10] overflow-hidden rounded-lg bg-gray-100 mb-3">
-                  {v?.media?.[0]?.url ? (
-                    <img
-                      src={v.media[0].url}
-                      srcSet={`
-    ${v.media[0].url}?w=400 400w,
-    ${v.media[0].url}?w=800 800w,
-    ${v.media[0].url}?w=1200 1200w
-  `}
-                      sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw"
-                      alt={v.media[0].alt || v.name}
-                      className="w-full h-full object-cover"
-                      width="800"
-                      height="500"
-                      loading={isAboveFold ? "eager" : "lazy"}
-                      fetchPriority={isAboveFold ? "high" : "low"}
-                      decoding="async"
-                      onError={(e) => {
-                        const img = e.currentTarget;
-                        // swap to fallback once
-                        if (img.src !== IMG_FALLBACK) {
-                          img.src = IMG_FALLBACK;
-                          img.removeAttribute("srcset"); // stop responsive retries
-                          img.fetchPriority = "low";
-                        }
-                      }}
-                    />
-                  ) : null}
+                  <SmartImage
+                    url={v?.media?.[0]?.url}
+                    alt={v?.media?.[0]?.alt || v?.name}
+                    eager={isAboveFold}
+                  />
                 </div>
 
-                <h3 className="name font-semibold truncate">{v?.name}</h3>
+                <h3 className="font-semibold">{v?.name}</h3>
                 <p className="text-sm text-gray-600 line-clamp-2">{v?.description}</p>
-
                 <div className="mt-2 text-sm text-gray-700">
                   €{v?.price} · max {v?.maxGuests} guests
                 </div>
@@ -331,8 +355,6 @@ export default function VenuesPage() {
           );
         })}
       </ul>
-
-      {/* 👇 Bottom pagination */}
       <Pagination />
 
       {isFetching && !isLoading && <p className="text-center text-gray-500 mt-2">Loading…</p>}

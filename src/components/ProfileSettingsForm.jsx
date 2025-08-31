@@ -50,14 +50,12 @@ export default function ProfileSettingsForm({ profile, onProfileUpdated }) {
     const payload = {};
     if (pf.bio !== (profile.bio || "")) payload.bio = pf.bio.trim();
     if (pf.avatarUrl !== (profile.avatar?.url || "")) {
-      payload.avatar = pf.avatarUrl.trim()
-        ? { url: pf.avatarUrl.trim(), alt: pf.avatarAlt || "" }
-        : { url: "", alt: "" };
+      payload.avatarUrl = pf.avatarUrl.trim();
+      payload.avatarAlt = pf.avatarAlt || "";
     }
     if (pf.bannerUrl !== (profile.banner?.url || "")) {
-      payload.banner = pf.bannerUrl.trim()
-        ? { url: pf.bannerUrl.trim(), alt: pf.bannerAlt || "" }
-        : { url: "", alt: "" };
+      payload.bannerUrl = pf.bannerUrl.trim();
+      payload.bannerAlt = pf.bannerAlt || "";
     }
     if (pf.venueManager !== Boolean(profile.venueManager)) {
       payload.venueManager = pf.venueManager;
