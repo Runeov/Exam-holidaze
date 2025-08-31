@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom"; // ✅
 import { useAuth } from "../context/AuthContext";
+import { showAlert } from "../helpers/AlarmWarnings.jsx";
 
 export default function RegisterForm() {
   const { register, error } = useAuth();
@@ -123,7 +124,7 @@ export default function RegisterForm() {
         Register as venue manager
       </label>
 
-      {showInlineError ? <p className="text-red-600 text-sm">{formError || error}</p> : null}
+      {showInlineError ? <p className="text-red-600 text-sm">{}</p> : null}
 
       <button
         type="submit"

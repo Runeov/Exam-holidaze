@@ -1,7 +1,8 @@
 /** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
-import { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { showAlert } from "../helpers/AlarmWarnings.jsx";
 
 export default function LoginForm() {
   const { login, error } = useAuth();
@@ -41,7 +42,6 @@ export default function LoginForm() {
       setFormError("Email and password are required.");
       return;
     }
-
     if (!isNoroffStudent) {
       setFormError("Only @stud.noroff.no email addresses are allowed.");
       return;
@@ -52,23 +52,31 @@ export default function LoginForm() {
     }
 
     setSubmitting(true);
-    const res = await login(form);
-    setSubmitting(false);
+    try {
+      const res = await login(form);
+      setSubmitting(false);
 
-    if (res.ok) {
-      const redirectTo = location.state?.from?.pathname || "/profile";
-      navigate(redirectTo, { replace: true });
-    } else {
-      // ✅ Handle specific 401 Unauthorized response
-      if (res.status === 401) {
-        setFormError("Invalid credentials. Please check your email and password.");
+      if (res?.ok) {
+        const redirectTo = location.state?.from?.pathname || "/profile";
+        navigate(redirectTo, { replace: true });
       } else {
-        setFormError(res.error || "Login failed");
+        setFormError(res?.error || "Login failed");
       }
+    } catch (err) {
+      // ← catch thrown errors
+      setSubmitting(false);
+      setFormError(err?.message || "Login failed");
     }
   }
 
   const showInlineError = (formError || error) && !(emailWarning || passwordWarning);
+
+  // --- Auto-dismiss the main alert after it’s shown ---------------------
+  useEffect(() => {
+    if (!showInlineError) return;
+    const t = setTimeout(() => setFormError(""), 4000);
+    return () => clearTimeout(t);
+  }, [showInlineError]);
 
   return (
     <form onSubmit={onSubmit} className="max-w-md mx-auto space-y-4">
@@ -99,10 +107,14 @@ export default function LoginForm() {
           autoComplete="current-password"
           required
         />
-        {passwordWarning && <p className="text-amber-600 text-xs mt-1">{passwordWarning}</p>}
+        {passwordWarning && <p className="text-amber-600 text-xs mt-1">{showAlert}</p>}
       </div>
 
-      {showInlineError && <p className="text-red-600 text-sm">{formError || error}</p>}
+      {showInlineError && (
+        <div className="alert-error" role="alert" aria-live="polite">
+          {formError || error}
+        </div>
+      )}
 
       <button
         type="submit"
