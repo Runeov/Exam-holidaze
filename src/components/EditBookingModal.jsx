@@ -103,7 +103,7 @@ export default function EditBookingModal({ open, booking, onClose, onSaved }) {
       <div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-lg space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-semibold">Edit booking</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-800">
+          <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-800">
             ✕
           </button>
         </div>
@@ -143,10 +143,11 @@ export default function EditBookingModal({ open, booking, onClose, onSaved }) {
             {error && <p className="text-sm text-red-600">{error}</p>}
 
             <div className="flex items-center justify-end gap-2 pt-2">
-              <button onClick={onClose} className="px-3 py-2 rounded-lg border">
+              <button type="button" onClick={onClose} className="px-3 py-2 rounded-lg border">
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={onSave}
                 disabled={saving}
                 className="px-4 py-2 rounded-lg bg-gray-900 text-white font-semibold disabled:opacity-60"

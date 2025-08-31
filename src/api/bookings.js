@@ -1,138 +1,184 @@
 // src/api/bookings.js
-import { getAuthHeaders } from "./auth";
+// Consistent with the axios-based http helpers and explicit auth passthrough.
 
-const API = "https://v2.api.noroff.dev";
+import { httpGet, httpPost, httpPut, httpDelete } from "./http.js";
 
-// Helper: coerce Date|string -> ISO8601 (keeps undefined as-is)
-function toIso(value) {
+/* ----------------------------- date utilities ----------------------------- */
+
+// Convert any date-like to ISO @ UTC midnight (Z) for day-granularity booking.
+function toIsoZMidnight(value) {
   if (!value) return value;
   const d = value instanceof Date ? value : new Date(value);
-  return d.toISOString();
+  const z = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  return z.toISOString();
+}
+
+// Normalize to UTC midnight (Date object) for safe [start, end) compare.
+function midUTC(dateLike) {
+  const d = new Date(dateLike);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+// Standard [start, end) overlap check at UTC-midnight resolution.
+export function hasDateOverlap(aFrom, aTo, bFrom, bTo) {
+  const A1 = midUTC(aFrom);
+  const A2 = midUTC(aTo);
+  const B1 = midUTC(bFrom);
+  const B2 = midUTC(bTo);
+  return A1 < B2 && B1 < A2;
+}
+
+/* --------------------------- availability helpers -------------------------- */
+
+/**
+ * Live availability check right before creating a booking.
+ * @param {{ venueId: string, dateFrom: string|Date, dateTo: string|Date, auth?: {token?: string, apiKey?: string} }} args
+ * @returns {Promise<{ ok: boolean, conflict?: {id:string,dateFrom:string,dateTo:string} }>}
+ */
+export async function checkAvailability({ venueId, dateFrom, dateTo, auth }) {
+  if (!venueId) throw new Error("checkAvailability: 'venueId' is required");
+
+  // Fetch venue with bookings only (fast + enough data)
+  const res = await httpGet(`/holidaze/venues/${encodeURIComponent(venueId)}`, {
+    params: { _bookings: true },
+    ...auth,
+  });
+
+  const bookings = res?.data?.data?.bookings || [];
+  const conflict = bookings.find((b) => hasDateOverlap(dateFrom, dateTo, b.dateFrom, b.dateTo));
+  return { ok: !conflict, conflict };
 }
 
 /**
- * Create a booking
- * @param {{ venueId: string, dateFrom: string|Date, dateTo: string|Date, guests: number }} payload
- * @returns {Promise<object>} created booking object
+ * Fetch bookings for a venue (bookings only).
+ * @param {string} venueId
+ * @param {{auth?: {token?: string, apiKey?: string}}} [opts]
  */
-export async function createBooking({ venueId, dateFrom, dateTo, guests }) {
-  if (!venueId) throw new Error("createBooking: venueId is required");
-  if (!dateFrom || !dateTo) throw new Error("createBooking: dateFrom and dateTo are required");
-  if (!guests || guests < 1) throw new Error("createBooking: guests must be at least 1");
+export async function getVenueBookings(venueId, { auth } = {}) {
+  if (!venueId) throw new Error("getVenueBookings: 'venueId' is required");
+  const res = await httpGet(`/holidaze/venues/${encodeURIComponent(venueId)}`, {
+    params: { _bookings: true },
+    ...auth,
+  });
+  return res?.data?.data?.bookings ?? [];
+}
+
+/* --------------------------------- CRUD ----------------------------------- */
+
+/**
+ * Create a booking (preflight overlap check by default).
+ * @param {{ venueId: string, dateFrom: string|Date, dateTo: string|Date, guests: number }} payload
+ * @param {{ skipPreflight?: boolean, auth?: {token?: string, apiKey?: string} }} [options]
+ * @returns {Promise<object>} created booking
+ */
+export async function createBooking(
+  { venueId, dateFrom, dateTo, guests },
+  { skipPreflight = false, auth } = {},
+) {
+  if (!venueId) throw new Error("createBooking: 'venueId' is required");
+  if (!dateFrom || !dateTo) throw new Error("createBooking: 'dateFrom' and 'dateTo' are required");
+  if (!guests || guests < 1) throw new Error("createBooking: 'guests' must be at least 1");
+
+  // Preflight (race guard)
+  if (!skipPreflight) {
+    const { ok, conflict } = await checkAvailability({ venueId, dateFrom, dateTo, auth });
+    if (!ok) {
+      const msg = `Those dates are already booked: ${conflict.dateFrom} → ${conflict.dateTo}`;
+      throw new Error(msg);
+    }
+  }
 
   const body = {
     venueId,
-    dateFrom: toIso(dateFrom),
-    dateTo: toIso(dateTo),
+    dateFrom: toIsoZMidnight(dateFrom),
+    dateTo: toIsoZMidnight(dateTo),
     guests: Number(guests),
   };
 
-  console.log("[api:createBooking] ->", body);
-
-  const res = await fetch(`${API}/holidaze/bookings`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...getAuthHeaders(), // should include Authorization + X-Noroff-API-Key
-    },
-    body: JSON.stringify(body),
-  });
-
-  const json = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    // Surface API error message if present
-    const apiMsg = json?.errors?.[0]?.message;
-    throw new Error(apiMsg || `Failed to create booking (${res.status})`);
+  // Small retry for transient 429/5xx (optional safety net)
+  try {
+    const res = await httpPost("/holidaze/bookings", body, auth);
+    return res?.data?.data ?? res?.data;
+  } catch (err) {
+    const code = err?.response?.status;
+    if (code && (code === 429 || code >= 500)) {
+      // one quick retry
+      const res = await httpPost("/holidaze/bookings", body, auth);
+      return res?.data?.data ?? res?.data;
+    }
+    const apiMsg = err?.response?.data?.errors?.[0]?.message;
+    throw new Error(apiMsg || err?.message || "Failed to create booking");
   }
-
-  // Noroff v2 wraps as { data, meta }
-  return json?.data ?? json;
 }
 
 /**
  * Get a profile's bookings (e.g., "My bookings").
- * Includes related venue data by default so you can show venue names.
- *
- * @param {string} name - Profile handle (not email)
- * @param {object} [opts]
- * @param {number} [opts.page=1]
- * @param {number} [opts.limit=50]
- * @param {boolean} [opts.includeVenue=true]    // adds `_venue=true`
- * @param {boolean} [opts.includeCustomer=false]// adds `_customer=true`
- * @param {boolean} [opts.includeOwner=false]   // adds `_owner=true`
+ * @param {string} profileName
+ * @param {{ page?: number, limit?: number, includeVenue?: boolean, includeCustomer?: boolean, includeOwner?: boolean, auth?: {token?: string, apiKey?: string} }} [opts]
  */
 export async function getProfileBookings(
-  name,
-  { page = 1, limit = 50, includeVenue = true, includeCustomer = false, includeOwner = false } = {},
+  profileName,
+  {
+    page = 1,
+    limit = 50,
+    includeVenue = true,
+    includeCustomer = false,
+    includeOwner = false,
+    auth,
+  } = {},
 ) {
-  if (!name) throw new Error("getProfileBookings: 'name' is required");
-
-  const url = new URL(`${API}/holidaze/profiles/${encodeURIComponent(name)}/bookings`);
-  url.searchParams.set("page", String(page));
-  url.searchParams.set("limit", String(limit));
-  if (includeVenue) url.searchParams.set("_venue", "true");
-  if (includeCustomer) url.searchParams.set("_customer", "true");
-  if (includeOwner) url.searchParams.set("_owner", "true");
-
-  console.log("[api:getProfileBookings] ->", url.toString());
-  const res = await fetch(url, { headers: { ...getAuthHeaders() } });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(json?.errors?.[0]?.message || `Failed to load bookings (${res.status})`);
-  }
-  return json?.data ?? json;
+  if (!profileName) throw new Error("getProfileBookings: 'profileName' is required");
+  const params = {
+    page,
+    limit,
+    _venue: includeVenue || undefined,
+    _customer: includeCustomer || undefined,
+    _owner: includeOwner || undefined,
+  };
+  const res = await httpGet(`/holidaze/profiles/${encodeURIComponent(profileName)}/bookings`, {
+    params,
+    ...auth,
+  });
+  return res?.data?.data ?? res?.data;
 }
 
 /**
- * Update a booking (allowed fields: dateFrom, dateTo, guests).
- * Uses PUT; switch to PATCH if you prefer partial updates.
- *
+ * Update a booking (PUT).
  * @param {string} bookingId
  * @param {{dateFrom?: string|Date, dateTo?: string|Date, guests?: number}} changes
+ * @param {{auth?: {token?: string, apiKey?: string}}} [opts]
  */
-export async function updateBooking(bookingId, changes = {}) {
+export async function updateBooking(bookingId, changes = {}, { auth } = {}) {
   if (!bookingId) throw new Error("updateBooking: 'bookingId' is required");
 
   const payload = {};
-  if (changes.dateFrom) payload.dateFrom = toIso(changes.dateFrom);
-  if (changes.dateTo) payload.dateTo = toIso(changes.dateTo);
-  if (typeof changes.guests === "number") payload.guests = changes.guests;
+  if (changes.dateFrom) payload.dateFrom = toIsoZMidnight(changes.dateFrom);
+  if (changes.dateTo) payload.dateTo = toIsoZMidnight(changes.dateTo);
+  if (typeof changes.guests === "number") payload.guests = Number(changes.guests);
 
-  console.log("[api:updateBooking] id:", bookingId, "payload:", payload);
-
-  const res = await fetch(`${API}/holidaze/bookings/${encodeURIComponent(bookingId)}`, {
-    method: "PUT", // or "PATCH"
-    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-    body: JSON.stringify(payload),
-  });
-
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(json?.errors?.[0]?.message || `Failed to update booking (${res.status})`);
+  try {
+    const res = await httpPut(`/holidaze/bookings/${encodeURIComponent(bookingId)}`, payload, auth);
+    return res?.data?.data ?? res?.data;
+  } catch (err) {
+    const apiMsg = err?.response?.data?.errors?.[0]?.message;
+    throw new Error(apiMsg || err?.message || "Failed to update booking");
   }
-  return json?.data ?? json;
 }
 
 /**
  * Delete a booking by id.
  * @param {string} bookingId
- * @returns {Promise<boolean>} true if deleted
+ * @param {{auth?: {token?: string, apiKey?: string}}} [opts]
+ * @returns {Promise<boolean>}
  */
-export async function deleteBooking(bookingId) {
+export async function deleteBooking(bookingId, { auth } = {}) {
   if (!bookingId) throw new Error("deleteBooking: 'bookingId' is required");
-
-  console.log("[api:deleteBooking] id:", bookingId);
-
-  const res = await fetch(`${API}/holidaze/bookings/${encodeURIComponent(bookingId)}`, {
-    method: "DELETE",
-    headers: { ...getAuthHeaders() },
-  });
-
-  if (res.status === 204) return true;
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(json?.errors?.[0]?.message || `Failed to delete booking (${res.status})`);
+  try {
+    const res = await httpDelete(`/holidaze/bookings/${encodeURIComponent(bookingId)}`, auth);
+    // Noroff returns 204 No Content; axios wraps it with data = "".
+    return res?.status === 204 || res?.data === "" || !!res;
+  } catch (err) {
+    const apiMsg = err?.response?.data?.errors?.[0]?.message;
+    throw new Error(apiMsg || err?.message || "Failed to delete booking");
   }
-  return true;
 }
