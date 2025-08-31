@@ -1,182 +1,312 @@
 // src/pages/VenuesPage.jsx
-import React, { useEffect, useMemo, useState } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+/** biome-ignore-all lint/suspicious/useIterableCallbackReturn: <explanation> */
+/** biome-ignore-all lint/correctness/noNestedComponentDefinitions: <explanation> */
+/** biome-ignore-all lint/suspicious/noArrayIndexKey: <explanation> */
+/** biome-ignore-all lint/a11y/useButtonType: <explanation> */
+import React, { useMemo, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { listVenues } from "../api/venues";
-import VenueCard from "../components/VenueCard";
 
-const LIMIT_OPTIONS = [25, 50, 100];
+const DEFAULT_LIMIT = 25;
+const API_PAGE_LIMIT = 100;
+
+const SORT_FIELDS = [
+  { value: "created", label: "Newest" },
+  { value: "data_name", label: "Name" },
+  { value: "data_price", label: "Price" },
+  { value: "data_location", label: "Location" },
+];
 
 export default function VenuesPage() {
   const [params, setParams] = useSearchParams();
 
-  // URL → state (with sensible fallbacks)
-  const page = Math.max(1, Number(params.get("page") || 1));
-  const limit = LIMIT_OPTIONS.includes(Number(params.get("limit")))
-    ? Number(params.get("limit"))
-    : 25;
+  // URL state
   const q = params.get("q") || "";
+  const page = Math.max(1, Number(params.get("page") || 1));
+  const limit = Math.min(100, Math.max(1, Number(params.get("limit") || DEFAULT_LIMIT)));
+  const sort = params.get("sort") || "created";
+  const order = params.get("order") || "desc";
 
-  // If your cards show host info, set this to true.
-  const withOwner = true;
+  function updateParams(entries) {
+    setParams((prev) => {
+      const p = new URLSearchParams(prev);
+      for (const [name, value] of Object.entries(entries)) {
+        if (value === "" || value == null) p.delete(name);
+        else p.set(name, String(value));
+      }
+      return p;
+    });
+  }
 
-  const [state, setState] = useState({
-    status: "idle", // idle | loading | error
-    rows: [],
-    meta: { total: 0, page, limit },
-    error: null,
+  // Fetch ALL pages once
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
+    queryKey: ["venues-all", { q }],
+    queryFn: async ({ queryKey, signal }) => {
+      const [, s] = queryKey;
+
+      const first = await listVenues({
+        page: 1,
+        limit: API_PAGE_LIMIT,
+        q: (s.q || "").trim() || undefined,
+        withOwner: true,
+        signal,
+      });
+      const firstPayload =
+        first?.data && (Array.isArray(first.data?.data) || first.data?.meta) ? first.data : first;
+
+      const pageCount = firstPayload?.meta?.pageCount || 1;
+
+      if (pageCount <= 1) {
+        console.log("📦 Loaded venues:", firstPayload?.data?.length || 0);
+        return firstPayload;
+      }
+
+      const restPages = Array.from({ length: pageCount - 1 }, (_, i) => i + 2);
+      const rest = await Promise.all(
+        restPages.map((p) =>
+          listVenues({
+            page: p,
+            limit: API_PAGE_LIMIT,
+            q: (s.q || "").trim() || undefined,
+            withOwner: true,
+            signal,
+          }).then((r) => (r?.data && (Array.isArray(r.data?.data) || r.data?.meta) ? r.data : r)),
+        ),
+      );
+
+      const allData = [...(firstPayload?.data || []), ...rest.flatMap((r) => r?.data || [])];
+
+      console.log("📦 Loaded venues:", allData.length);
+
+      return { data: allData, meta: { totalCount: allData.length } };
+    },
+    keepPreviousData: true,
   });
 
+  const rowsRaw = data?.data ?? [];
+  const totalCount = data?.meta?.totalCount || rowsRaw.length;
+
+  const globallySorted = useMemo(() => {
+    const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
+    const getLoc = (v) =>
+      `${v?.location?.country || ""} ${v?.location?.city || ""} ${v?.location?.address || ""}`.trim();
+
+    const qstr = (q || "").trim().toLowerCase();
+    const filtered = qstr
+      ? rowsRaw.filter((v) => {
+          const hay = `${v?.name || ""} ${v?.description || ""} ${getLoc(v)}`.toLowerCase();
+          return hay.includes(qstr);
+        })
+      : rowsRaw;
+
+    if (sort === "data_name")
+      filtered.sort((a, b) => collator.compare(a?.name || "", b?.name || ""));
+    else if (sort === "data_price")
+      filtered.sort((a, b) => (+a?.price || Infinity) - (+b?.price || Infinity));
+    else if (sort === "data_location")
+      filtered.sort((a, b) => collator.compare(getLoc(a), getLoc(b)));
+    else if (sort === "created")
+      filtered.sort(
+        (a, b) => new Date(a?.created || 0).getTime() - new Date(b?.created || 0).getTime(),
+      );
+
+    return order === "desc" ? [...filtered].reverse() : filtered;
+  }, [rowsRaw, q, sort, order]);
+
+  const clientTotal = globallySorted.length;
+  const clientPageCount = Math.max(1, Math.ceil(clientTotal / limit));
+  const pageSafe = Math.min(page, clientPageCount);
+  const start = (pageSafe - 1) * limit;
+  const end = start + limit;
+  const pageRows = globallySorted.slice(start, end);
+
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        setState((s) => ({ ...s, status: "loading", error: null }));
-        const res = await listVenues({
-          page,
-          limit,
-          q: q || undefined,
-          sort: "created",
-          order: "desc",
-          withOwner,
-        });
-        const data = res?.data?.data || [];
-        const meta = res?.data?.meta || { total: data.length, page, limit };
-        if (!alive) return;
-        setState({ status: "idle", rows: data, meta, error: null });
-      } catch (err) {
-        if (!alive) return;
-        setState((s) => ({
-          ...s,
-          status: "error",
-          error:
-            err?.response?.data?.errors?.[0]?.message || err?.message || "Failed to load venues",
-        }));
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [page, limit, q]); // ← list primitives
+    pageRows.slice(0, 3).forEach((v) => {
+      const url = v?.media?.[0]?.url;
+      if (!url) return;
+      const link = document.createElement("link");
+      link.rel = "preload";
+      link.as = "image";
+      link.href = url;
+      document.head.appendChild(link);
+      return () => document.head.removeChild(link);
+    });
+  }, [pageRows]);
 
-  function updateParam(key, value) {
-    const next = new URLSearchParams(params);
-    if (value === undefined || value === "" || value === null) next.delete(key);
-    else next.set(key, String(value));
-    // reset to page 1 when changing filters other than page
-    if (key !== "page") next.set("page", "1");
-    setParams(next, { replace: true });
-  }
+  // Debug: show slice
+  useEffect(() => {
+    console.log(
+      `📑 Showing slice [${start}:${end}) of ${clientTotal} (page ${pageSafe}/${clientPageCount})`,
+    );
+  }, [start, end, clientTotal, pageSafe, clientPageCount]);
 
-  function onSubmitSearch(e) {
+  // Handlers
+  function onSearch(e) {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    updateParam("q", form.get("q")?.toString().trim() || "");
+  }
+  function onSortChange(e) {
+    updateParams({ sort: e.target.value, page: 1 });
+  }
+  function onOrderChange(e) {
+    updateParams({ order: e.target.value, page: 1 });
+  }
+  function onPageChange(e) {
+    updateParams({ page: e.target.value });
+  }
+  function onLimitChange(e) {
+    updateParams({ limit: e.target.value, page: 1 });
   }
 
-  const { status, rows, meta, error } = state;
-  const totalPages = Math.max(1, Math.ceil((meta?.total || 0) / limit));
+  // Small reusable block for pagination (used on top & bottom)
+  function Pagination() {
+    return (
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <button
+          className="px-3 py-2 rounded-lg border"
+          disabled={pageSafe <= 1 || isFetching}
+          onClick={() => updateParams({ page: Math.max(1, pageSafe - 1) })}
+        >
+          Prev
+        </button>
+
+        <select value={pageSafe} onChange={onPageChange} className="px-3 py-2 rounded-lg border">
+          {Array.from({ length: clientPageCount }, (_, i) => i + 1).map((p) => (
+            <option key={p} value={p}>
+              Page {p}
+            </option>
+          ))}
+        </select>
+
+        <button
+          className="px-3 py-2 rounded-lg border"
+          disabled={pageSafe >= clientPageCount || isFetching}
+          onClick={() => updateParams({ page: Math.min(clientPageCount, pageSafe + 1) })}
+        >
+          Next
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 md:p-10 space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-3xl md:text-4xl font-bold">All Venues</h1>
-        <p className="text-gray-600">Browse stays. Use the search to narrow things down.</p>
-      </header>
+      <header className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 items-end">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold">Venues</h1>
+          <p className="text-gray-600">
+            Showing <b>{pageRows.length}</b> of <b>{totalCount}</b> · Page <b>{pageSafe}</b> /{" "}
+            {clientPageCount}
+          </p>
+        </div>
 
-      {/* Controls */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <form onSubmit={onSubmitSearch} className="flex gap-2 w-full md:max-w-lg">
+        {/* Search */}
+        <form onSubmit={onSearch} className="flex gap-2 md:justify-center">
           <input
             name="q"
-            defaultValue={q}
-            placeholder="Search by name, city, country…"
-            className="flex-1 rounded border px-3 py-2"
+            value={q ?? ""}
+            onChange={(e) => updateParams({ q: e.target.value, page: 1 })}
+            placeholder="Search venues…"
+            className="px-3 py-2 rounded-lg border w-56"
           />
-          <button type="submit" className="px-4 py-2 rounded bg-gray-900 text-white font-semibold">
-            Search
-          </button>
+          <button className="px-3 py-2 rounded-lg bg-gray-900 text-white">Search</button>
         </form>
 
-        <div className="flex items-center gap-3">
-          <label className="text-sm">
-            <span className="mr-2">Results per page</span>
-            <select
-              value={limit}
-              onChange={(e) => updateParam("limit", Number(e.target.value))}
-              className="rounded border px-2 py-1"
-            >
-              {LIMIT_OPTIONS.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
+        {/* Sorting / Limit */}
+        <div className="flex flex-wrap gap-2 md:justify-end">
+          <select value={sort} onChange={onSortChange} className="px-3 py-2 rounded-lg border">
+            {SORT_FIELDS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+
+          <select value={order} onChange={onOrderChange} className="px-3 py-2 rounded-lg border">
+            <option value="asc">Asc</option>
+            <option value="desc">Desc</option>
+          </select>
+
+          <select value={limit} onChange={onLimitChange} className="px-3 py-2 rounded-lg border">
+            {[25, 50, 100].map((n) => (
+              <option key={n} value={n}>
+                {n}/page
+              </option>
+            ))}
+          </select>
         </div>
-      </div>
+      </header>
 
-      {/* Status */}
-      {status === "loading" && <p className="opacity-75">Loading venues…</p>}
-      {status === "error" && (
-        <p className="text-red-600">{error || "Something went wrong loading venues."}</p>
-      )}
+      {/* 👆 Top pagination */}
+      <Pagination />
 
-      {/* Results */}
-      {status !== "loading" && rows.length === 0 && (
-        <div className="rounded-xl border p-6 text-center text-gray-600">
-          <p className="mb-2">No venues found.</p>
-          {q && (
-            <button
-              type="button"
-              className="underline text-sm"
-              onClick={() => updateParam("q", "")}
-            >
-              Clear search
-            </button>
-          )}
-        </div>
-      )}
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {rows.map((v) => (
-          <VenueCard key={v.id} venue={v} />
-        ))}
-      </div>
-
-      {/* Pagination */}
-      {rows.length > 0 && (
-        <div className="flex items-center justify-between pt-4">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => updateParam("page", Math.max(1, page - 1))}
-            className="px-3 py-2 rounded border disabled:opacity-50"
-          >
-            ← Prev
-          </button>
-
-          <div className="text-sm text-gray-600">
-            Page <span className="font-medium">{page}</span> of{" "}
-            <span className="font-medium">{totalPages}</span>
-          </div>
-
-          <button
-            type="button"
-            disabled={page >= totalPages}
-            onClick={() => updateParam("page", page + 1)}
-            className="px-3 py-2 rounded border disabled:opacity-50"
-          >
-            Next →
+      {error && (
+        <div className="rounded-lg bg-red-50 text-red-700 p-3">
+          {error?.response?.data?.message || "Failed to load venues"}
+          <button onClick={() => refetch()} className="underline ml-2">
+            Retry
           </button>
         </div>
       )}
 
-      {/* Back to home (optional) */}
-      <div className="pt-6">
-        <Link to="/" className="text-sm underline">
-          ← Back to home
-        </Link>
-      </div>
+      {/* Grid */}
+      <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {isLoading &&
+          pageRows.length === 0 &&
+          Array.from({ length: 6 }).map((_, i) => (
+            <li key={`sk-${i}`} className="rounded-xl border p-4 animate-pulse">
+              <div className="aspect-[16/10] rounded-lg bg-gray-200 mb-3" />
+              <div className="h-4 w-2/3 bg-gray-200 mb-2 rounded" />
+              <div className="h-3 w-full bg-gray-200 mb-2 rounded" />
+              <div className="h-3 w-1/2 bg-gray-200 rounded" />
+            </li>
+          ))}
+
+        {pageRows.map((v, i) => {
+          const isAboveFold = i < 6; // prioritize first 6 images (adjust to taste)
+
+          return (
+            <li
+              key={`v-${v?.id || "noid"}-${i}`}
+              className="rounded-xl border p-4 hover:shadow-sm transition"
+            >
+              <Link to={`/venues/${v.id}`} className="block">
+                <div className="aspect-[16/10] overflow-hidden rounded-lg bg-gray-100 mb-3">
+                  {v?.media?.[0]?.url ? (
+                    <img
+                      src={v.media[0].url}
+                      srcSet={`
+    ${v.media[0].url}?w=400 400w,
+    ${v.media[0].url}?w=800 800w,
+    ${v.media[0].url}?w=1200 1200w
+  `}
+                      sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw"
+                      alt={v.media[0].alt || v.name}
+                      className="w-full h-full object-cover"
+                      width="800"
+                      height="500"
+                      loading={isAboveFold ? "eager" : "lazy"}
+                      fetchpriority={isAboveFold ? "high" : "low"}
+                      decoding="async"
+                    />
+                  ) : null}
+                </div>
+
+                <h3 className="font-semibold">{v?.name}</h3>
+                <p className="text-sm text-gray-600 line-clamp-2">{v?.description}</p>
+                <div className="mt-2 text-sm text-gray-700">
+                  €{v?.price} · max {v?.maxGuests} guests
+                </div>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+
+      {/* 👇 Bottom pagination */}
+      <Pagination />
+
+      {isFetching && !isLoading && <p className="text-center text-gray-500 mt-2">Loading…</p>}
     </div>
   );
 }
