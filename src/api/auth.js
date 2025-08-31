@@ -10,6 +10,7 @@ const BASE = "/auth";
 export async function register({ email, password, name, venueManager = false }) {
   const payload = { email, password, name, ...(venueManager ? { venueManager: true } : {}) };
   const res = await httpPost(`${BASE}/register`, payload);
+
   return res?.data;
 }
 
@@ -18,7 +19,8 @@ export async function register({ email, password, name, venueManager = false }) 
  * Returns { token, profile, apiKey }
  */
 export async function login({ email, password }) {
-  const res = await httpPost(`${BASE}/login`, { email, password });
+  const res = await httpPost(`${BASE}/login`, { email, password }, { params: { _holidaze: true } });
+
   const body = res?.data;
 
   // Normalize v2 shapes

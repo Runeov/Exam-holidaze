@@ -9,12 +9,13 @@ const isHttpUrl = (u) => !!u && /^https?:\/\//i.test(u);
  */
 export function getProfile(
   name,
-  { withVenues = false, withBookings = false, withOwner = false } = {},
+  { withVenues = false, withBookings = false, withOwner = false, withHolidaze = true } = {},
 ) {
   const params = {
     _venues: withVenues || undefined,
     _bookings: withBookings || undefined,
     _owner: withOwner || undefined,
+    _holidaze: withHolidaze || undefined,
   };
   return httpGet(`/holidaze/profiles/${encodeURIComponent(name)}`, { params });
 }

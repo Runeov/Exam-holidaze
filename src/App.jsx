@@ -9,6 +9,9 @@ import ProfilePage from "./pages/ProfilePage";
 import VenuesPage from "./pages/VenuesPage";
 import VenueDetailsPage from "./pages/VenueDetailsPage";
 import NavBar from "./components/NavBar";
+import MyVenuesPage from "./pages/MyVenuesPage";
+import CreateVenuePage from "./pages/CreateVenuePage";
+import UserProfilePage from "./pages/UserProfilePage";
 
 export default function App() {
   const { loading } = useAuth(); // `isAuthed` isn't in context; navbar uses `user`
@@ -26,6 +29,10 @@ export default function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/venues" element={<VenuesPage />} />
           <Route path="/venues/:id" element={<VenueDetailsPage />} />
+          <Route path="/venues/create" element={<CreateVenuePage />} />
+          <Route path="/users/:name" element={<UserProfilePage />} />
+
+          <Route path="/my-venues" element={<MyVenuesPage />} />
         </Routes>
       </div>
     </BrowserRouter>

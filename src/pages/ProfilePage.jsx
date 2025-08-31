@@ -7,6 +7,7 @@ import ProfileSettingsForm from "../components/ProfileSettingsForm";
 import BookingList from "../components/BookingList";
 import EditBookingModal from "../components/EditBookingModal";
 import { saveProfileAndRefresh } from "../logic/profileSync";
+import MyVenuesPage from "./MyVenuesPage";
 
 export default function ProfilePage() {
   const { isAuthed, loading: authLoading, profile, setProfile } = useAuth();
@@ -138,6 +139,13 @@ export default function ProfilePage() {
         saving={savingSettings}
         error={settingsError}
       />
+
+      {profile?.venueManager && (
+        <div>
+          <h2 className="text-2xl font-semibold mt-10 mb-4">My Venues</h2>
+          <MyVenuesPage embedded />
+        </div>
+      )}
 
       {/* Bookings */}
       {state.loading ? (

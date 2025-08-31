@@ -129,7 +129,14 @@ export default function VenueDetailsPage() {
           {city && country ? ", " : ""} {country}
         </p>
       </header>
-
+      {venue?.owner?.name && (
+        <p className="text-sm text-gray-600">
+          Hosted by{" "}
+          <Link to={`/users/${venue.owner.name}`} className="underline text-blue-600">
+            {venue.owner.name}
+          </Link>
+        </p>
+      )}
       <div className="rounded-2xl overflow-hidden bg-gray-100 aspect-[16/9]">
         <img src={image} alt={venue?.name || "Venue"} className="w-full h-full object-cover" />
       </div>
