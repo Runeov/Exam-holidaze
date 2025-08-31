@@ -1,6 +1,7 @@
+// src/components/FeaturedVenues.jsx
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom"; // ✅ use router link
-import { getFeaturedVenues, getAllVenues, getVenues } from "../api/venues";
+import { Link } from "react-router-dom";
+import { listVenues } from "../api/venues";
 import VenueCard from "./VenueCard";
 
 export default function FeaturedVenues() {
@@ -8,19 +9,37 @@ export default function FeaturedVenues() {
   const [status, setStatus] = useState("idle"); // idle | loading | error
 
   useEffect(() => {
+    let active = true;
+
     async function run() {
       try {
         setStatus("loading");
-        const data = await getFeaturedVenues();
 
-        setVenues(data);
-        setStatus("idle");
+        // Fetch a small set of "featured" venues (e.g. top rated)
+        const res = await listVenues({
+          page: 1,
+          limit: 3,
+          sort: "rating",
+          order: "desc",
+          withOwner: true, // optional, if you want host info
+        });
+
+        const data = res?.data?.data || [];
+
+        if (active) {
+          setVenues(data);
+          setStatus("idle");
+        }
       } catch (e) {
         console.error("❌ featured fetch failed", e);
-        setStatus("error");
+        if (active) setStatus("error");
       }
     }
+
     run();
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (status === "loading") {
@@ -34,7 +53,6 @@ export default function FeaturedVenues() {
     <div>
       <div className="flex items-end justify-between mb-3">
         <h2 className="text-2xl md:text-3xl font-bold">Featured venues</h2>
-        {/* ✅ View all goes to /venues */}
         <Link to="/venues" className="text-sm font-semibold underline">
           View all
         </Link>

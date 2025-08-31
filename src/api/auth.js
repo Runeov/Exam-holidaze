@@ -1,31 +1,38 @@
-import { http } from "./http.js";
+// src/api/auth.js
+import { httpGet, httpPost } from "./http.js";
 import { readSession, writeSession, clearSession } from "../utils/session.js";
 
-// POST /auth/register
+const BASE = "/auth";
+
+/**
+ * Register a new user
+ */
 export async function register({ email, password, name, venueManager = false }) {
-  const payload = { email, password, name };
-  if (venueManager) payload.venueManager = true;
-  const { data } = await http.post("/auth/register", payload);
-  return data;
+  const payload = { email, password, name, ...(venueManager ? { venueManager: true } : {}) };
+  const res = await httpPost(`${BASE}/register`, payload);
+  return res?.data;
 }
 
-// POST /auth/login  -> writes session + ensures API key
+/**
+ * Login then ensure an API key exists.
+ * Returns { token, profile, apiKey }
+ */
 export async function login({ email, password }) {
-  const { data } = await http.post("/auth/login", { email, password });
+  const res = await httpPost(`${BASE}/login`, { email, password });
+  const body = res?.data;
 
-  // API shape guard
-  const token = data?.data?.accessToken || data?.accessToken;
-  const profile = data?.data || data;
+  // Normalize v2 shapes
+  const token = body?.data?.accessToken ?? body?.accessToken;
+  const profile = body?.data ?? body;
   if (!token) throw new Error("Missing access token from API response.");
 
-  // Save token + profile now
+  // Persist token + profile
   writeSession({ token, profile });
 
-  // Ensure API key exists
+  // Ensure API key (MUST be POST on v2)
   let { apiKey } = readSession();
   if (!apiKey) {
-    const resp = await http.post("/auth/create-api-key", { name: "holidaze-key" });
-    apiKey = resp?.data?.data?.key || resp?.data?.key || resp?.data;
+    apiKey = await createApiKey({ token, name: "holidaze-key" });
     if (!apiKey) throw new Error("API key missing in response.");
     writeSession({ apiKey });
   }
@@ -33,21 +40,34 @@ export async function login({ email, password }) {
   return { token, profile, apiKey };
 }
 
+/**
+ * Create API key (POST /auth/create-api-key)
+ * Accepts an existing bearer token and optional name.
+ */
+export async function createApiKey({ token, name = "app-key" }) {
+  if (!token) throw new Error("createApiKey: token is required");
+  const res = await httpPost(`${BASE}/create-api-key`, { name }, { token });
+  return res?.data?.apiKey ?? res?.data?.data?.key ?? res?.data?.key;
+}
+
+/**
+ * Clear session completely
+ */
 export function logout() {
   clearSession();
 }
 
-// ✅ Canonical headers for Noroff v2
-export function getAuthHeaders(extra = {}) {
-  const { token, apiKey } = readSession();
-  if (!token || !apiKey) {
-    console.error("❌ Missing authentication details.", { hasToken: !!token, hasKey: !!apiKey });
-    return null;
+/**
+ * Optional legacy helper (prefer passing { token, apiKey } to http.* instead)
+ */
+export function getAuthHeaders() {
+  try {
+    const s = readSession?.() || {};
+    const headers = {};
+    if (s.token) headers.Authorization = `Bearer ${s.token}`;
+    if (s.apiKey) headers["X-Noroff-API-Key"] = s.apiKey;
+    return headers;
+  } catch {
+    return {};
   }
-  return {
-    Authorization: `Bearer ${token}`,
-    "X-Noroff-API-Key": apiKey,
-    "Content-Type": "application/json",
-    ...extra,
-  };
 }

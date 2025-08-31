@@ -1,119 +1,75 @@
 // src/pages/VenueDetailsPage.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { createBooking } from "../api/bookings";
 import { useAuth } from "../context/AuthContext";
 import BookingCalendar from "../components/BookingCalendar";
 
-// --- tiny utils (local to this page) -------------------------------
-const API = "https://v2.api.noroff.dev";
+import { getVenue } from "../api/venues";
+import { createBooking } from "../api/bookings";
+import { checkAvailability } from "../logic/checkAvailability";
+import { buildDisabledRanges } from "../utils/availability";
 
-function toIsoZMidnight(date) {
-  if (!date) return "";
-  const d = new Date(date);
-  // Use UTC midnight to avoid TZ drift when sending to API
+function toIsoZMidnight(dateLike) {
+  if (!dateLike) return "";
+  const d = new Date(dateLike);
   const z = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   return z.toISOString();
-}
-
-/** Normalize any date-like input to UTC midnight for safe comparisons */
-function toUtcMidnight(d) {
-  const x = new Date(d);
-  return new Date(Date.UTC(x.getUTCFullYear(), x.getUTCMonth(), x.getUTCDate()));
-}
-
-/** Treat ranges as [start, end) — end is exclusive */
-function rangesOverlap(aStart, aEnd, bStart, bEnd) {
-  const A1 = toUtcMidnight(aStart);
-  const A2 = toUtcMidnight(aEnd);
-  const B1 = toUtcMidnight(bStart);
-  const B2 = toUtcMidnight(bEnd);
-  return A1 < B2 && B1 < A2;
-}
-
-function hasBookingConflict(bookings = [], dateFrom, dateTo) {
-  return bookings.some((b) => rangesOverlap(dateFrom, dateTo, b.dateFrom, b.dateTo));
 }
 
 function fmt(iso) {
   const d = new Date(iso);
   return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
-// -------------------------------------------------------------------
 
 export default function VenueDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthed, loading: authLoading, apiKey } = useAuth();
+  const { isAuthed, loading: authLoading, token, apiKey } = useAuth(); // token needed for POST
+  const auth = { token, apiKey };
 
   const [venue, setVenue] = useState(null);
-  const [status, setStatus] = useState("idle"); // idle | loading | error
-  const [bookState, setBookState] = useState({
-    submitting: false,
-    error: "",
-    success: "",
-  });
+  const [status, setStatus] = useState("idle"); // idle|loading|error
 
-  // form fields
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [guests, setGuests] = useState(1);
-  // calendar range selection (controlled in this component)
+  // booking UI
   const [range, setRange] = useState({ from: null, to: null });
-  function handleRangeSelect(next) {
-    setRange(next || { from: null, to: null });
-    if (!next?.from || !next?.to) {
-      setDateFrom("");
-      setDateTo("");
-      return;
-    }
-    setDateFrom(toIsoZMidnight(next.from));
-    setDateTo(toIsoZMidnight(next.to));
-  }
+  const [guests, setGuests] = useState(1);
+  const [bookState, setBookState] = useState({ submitting: false, error: "", success: "" });
 
-  // Load venue WITH bookings so we can block overlaps
+  // Fetch details with owner + bookings
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
-    async function run() {
+    let on = true;
+    (async () => {
       try {
         setStatus("loading");
-        const res = await fetch(`${API}/holidaze/venues/${id}?_bookings=true`, {
-          headers: apiKey ? { "X-Noroff-API-Key": apiKey } : undefined,
-        });
-        if (!res.ok) throw new Error(`Failed to fetch venue (${res.status})`);
-        const { data } = await res.json();
-        setVenue(data);
-        setStatus("idle");
-      } catch (e) {
-        console.error("❌ details fetch failed", e);
-        setStatus("error");
+        const res = await getVenue(id, { withBookings: true, withOwner: true }, auth);
+        const data = res?.data?.data;
+        if (on) {
+          setVenue(data || null);
+          setStatus("idle");
+        }
+      } catch (err) {
+        console.error("❌ details fetch failed", err);
+        if (on) setStatus("error");
       }
-    }
-    run();
-  }, [id, apiKey]);
+    })();
+    return () => {
+      on = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, apiKey]); // re-run if key changes to ensure header
 
   const image =
     venue?.media?.[0]?.url ||
     "https://images.unsplash.com/photo-1502672023488-70e25813eb80?q=80&w=1600&auto=format&fit=crop";
   const rating = venue?.rating ?? 0;
   const { city = "", country = "" } = venue?.location || {};
-  const maxGuests = useMemo(() => Number(venue?.maxGuests ?? 1), [venue]);
+  const maxGuests = Number(venue?.maxGuests ?? 1);
 
   function validate() {
-    if (!dateFrom || !dateTo) return "Please select both start and end dates.";
-    const start = new Date(dateFrom);
-    const end = new Date(dateTo);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (start < today) return "Start date cannot be in the past.";
-    if (end <= start) return "End date must be after start date.";
+    if (!range?.from || !range?.to) return "Please select both start and end dates.";
     if (!guests || guests < 1) return "Guests must be at least 1.";
     if (maxGuests && guests > maxGuests) return `Max guests for this venue is ${maxGuests}.`;
-
-    // Local overlap check against the bookings we already loaded
-    if (Array.isArray(venue?.bookings) && hasBookingConflict(venue.bookings, dateFrom, dateTo)) {
-      return "Those dates overlap an existing booking.";
-    }
-
     return "";
   }
 
@@ -127,43 +83,33 @@ export default function VenueDetailsPage() {
       return;
     }
 
-    try {
-      // --- server-side preflight: re-fetch latest bookings to avoid race conditions
-      const pre = await fetch(`${API}/holidaze/venues/${id}?_bookings=true`, {
-        headers: apiKey ? { "X-Noroff-API-Key": apiKey } : undefined,
-      });
-      if (!pre.ok) throw new Error(`Preflight failed (${pre.status})`);
-      const { data: freshVenue } = await pre.json();
+    const dateFrom = toIsoZMidnight(range.from);
+    const dateTo = toIsoZMidnight(range.to);
 
-      if (hasBookingConflict(freshVenue.bookings || [], dateFrom, dateTo)) {
+    try {
+      // Preflight (live) availability
+      const { ok, conflict } = await checkAvailability({ venueId: id, dateFrom, dateTo, auth });
+      if (!ok) {
         setBookState({
           submitting: false,
-          error: "Those dates were just booked by someone else. Please pick different dates.",
+          error: `Those dates are already booked (${fmt(conflict.dateFrom)} → ${fmt(conflict.dateTo)}).`,
           success: "",
         });
         return;
       }
 
-      // proceed with creation
-      const payload = {
-        venueId: id,
-        dateFrom: new Date(dateFrom).toISOString(),
-        dateTo: new Date(dateTo).toISOString(),
-        guests: Number(guests),
-      };
+      // Create
+      const payload = { venueId: id, dateFrom, dateTo, guests: Number(guests) };
+      const res = await createBooking(payload, auth);
+      console.log("[booking] created", res?.data);
 
-      const created = await createBooking(payload);
-      console.log("[booking] created", created);
+      // Optimistic: reflect success & redirect
       setBookState({ submitting: false, error: "", success: "Booking confirmed!" });
-
       setTimeout(() => navigate("/profile"), 600);
     } catch (err) {
       console.error("[booking] failed", err);
-      setBookState({
-        submitting: false,
-        error: err?.response?.data?.errors?.[0]?.message || err?.message || "Booking failed",
-        success: "",
-      });
+      const apiMsg = err?.response?.data?.errors?.[0]?.message || err?.message || "Booking failed";
+      setBookState({ submitting: false, error: apiMsg, success: "" });
     }
   }
 
@@ -180,8 +126,7 @@ export default function VenueDetailsPage() {
         <h1 className="text-3xl md:text-4xl font-bold">{venue?.name}</h1>
         <p className="text-gray-600">
           ★ {rating.toFixed(1)} • {city}
-          {city && country ? ", " : ""}
-          {country}
+          {city && country ? ", " : ""} {country}
         </p>
       </header>
 
@@ -196,7 +141,7 @@ export default function VenueDetailsPage() {
             {venue?.description || "No description yet."}
           </p>
 
-          {Array.isArray(venue?.amenities) && venue.amenities.length > 0 ? (
+          {Array.isArray(venue?.amenities) && venue.amenities.length > 0 && (
             <>
               <h3 className="text-lg font-semibold mt-4">Amenities</h3>
               <ul className="list-disc pl-5 space-y-1">
@@ -205,9 +150,8 @@ export default function VenueDetailsPage() {
                 ))}
               </ul>
             </>
-          ) : null}
+          )}
 
-          {/* Quick visual of booked ranges to help the user pick dates */}
           {Array.isArray(venue?.bookings) && venue.bookings.length > 0 && (
             <>
               <h3 className="text-lg font-semibold mt-6">Already booked</h3>
@@ -227,14 +171,13 @@ export default function VenueDetailsPage() {
         </div>
 
         <aside className="md:col-span-1 p-4 border rounded-2xl bg-white space-y-3">
-          {venue?.price ? (
+          {Number.isFinite(venue?.price) && (
             <p className="text-2xl">
               <span className="font-bold">${venue.price}</span>{" "}
               <span className="text-gray-600 text-base">/ night</span>
             </p>
-          ) : null}
+          )}
 
-          {/* Booking form */}
           {!authLoading && !isAuthed && (
             <div className="text-sm">
               <p className="mb-2">You must be logged in to book.</p>
@@ -249,16 +192,14 @@ export default function VenueDetailsPage() {
 
           {isAuthed && (
             <form onSubmit={onBook} className="space-y-3">
-              {/* Calendar selection */}
               <div className="space-y-2">
                 <span className="block text-sm font-medium">Choose dates</span>
                 <BookingCalendar
-                  bookings={venue?.bookings || []}
+                  bookings={buildDisabledRanges(venue?.bookings || [])}
                   selected={range}
-                  onSelect={handleRangeSelect}
-                  minDate={new Date()} // today
+                  onSelect={setRange}
+                  minDate={new Date()}
                 />
-                {/* Optional: quick summary */}
                 <div className="text-xs text-gray-600">
                   {range?.from && range?.to ? (
                     <>
@@ -294,6 +235,7 @@ export default function VenueDetailsPage() {
               >
                 {bookState.submitting ? "Booking…" : "Book now"}
               </button>
+
               <p className="text-xs text-gray-500">
                 You’ll be redirected to your profile after booking.
               </p>

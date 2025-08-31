@@ -1,23 +1,22 @@
 import { get, save, remove } from "./storage.js";
 
+const KEY = "holidaze:session";
+
 export function readSession() {
-  return {
-    token: get("token", ""),
-    apiKey: get("apiKey", ""),
-    profile: get("profile", null),
-  };
+  try {
+    return JSON.parse(localStorage.getItem(KEY)) || {};
+  } catch {
+    return {};
+  }
 }
-
-export function writeSession({ token, apiKey, profile }) {
-  if (token) save("token", token);
-  if (apiKey) save("apiKey", apiKey);
-  if (profile) save("profile", profile);
+export function writeSession(next) {
+  const cur = readSession();
+  const merged = { ...cur, ...next };
+  localStorage.setItem(KEY, JSON.stringify(merged));
+  return merged;
 }
-
 export function clearSession() {
-  remove("token");
-  remove("apiKey");
-  remove("profile");
+  localStorage.removeItem(KEY);
 }
 
 // ✅ Canonical headers for Noroff v2

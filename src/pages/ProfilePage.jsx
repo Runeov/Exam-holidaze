@@ -6,6 +6,7 @@ import { getProfileBookings, deleteBooking } from "../api/bookings";
 import ProfileSettingsForm from "../components/ProfileSettingsForm";
 import BookingList from "../components/BookingList";
 import EditBookingModal from "../components/EditBookingModal";
+import { saveProfileAndRefresh } from "../logic/profileSync";
 
 export default function ProfilePage() {
   const { isAuthed, loading: authLoading, profile, setProfile } = useAuth();
@@ -13,6 +14,10 @@ export default function ProfilePage() {
   const [state, setState] = useState({ loading: true, error: "", rows: [] });
   const [busyId, setBusyId] = useState(null);
   const [edit, setEdit] = useState({ open: false, booking: null });
+
+  // local feedback for settings save
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsError, setSettingsError] = useState("");
 
   // Load "my bookings"
   useEffect(() => {
@@ -79,6 +84,31 @@ export default function ProfilePage() {
     }));
   }
 
+  // Save profile via helper → persist locally → (optionally) refresh my venues list
+  async function handleSaveProfile(changes) {
+    if (!profile?.name) return;
+    setSavingSettings(true);
+    setSettingsError("");
+    try {
+      const { profile: updated /*, venues */ } = await saveProfileAndRefresh({
+        name: profile.name,
+        changes,
+        withBookings: true,
+        // if your AuthContext exposes applyProfile, you can pass it here too
+        // applyProfile,
+      });
+      // Update UI profile immediately
+      setProfile?.(updated);
+    } catch (err) {
+      const msg =
+        err?.response?.data?.errors?.[0]?.message || err?.message || "Failed to update profile";
+      setSettingsError(msg);
+      console.error("saveProfileAndRefresh failed:", err);
+    } finally {
+      setSavingSettings(false);
+    }
+  }
+
   if (authLoading) return <p className="p-6">Loading your profile…</p>;
   if (!isAuthed) {
     return (
@@ -101,7 +131,13 @@ export default function ProfilePage() {
       </header>
 
       {/* Profile settings */}
-      <ProfileSettingsForm profile={profile} onProfileUpdated={(u) => setProfile?.(u)} />
+      <ProfileSettingsForm
+        profile={profile}
+        onSave={handleSaveProfile} // ← call with { bio, venueManager, avatarUrl, avatarAlt, bannerUrl, bannerAlt }
+        onProfileUpdated={(u) => setProfile?.(u)} // keep for compatibility
+        saving={savingSettings}
+        error={settingsError}
+      />
 
       {/* Bookings */}
       {state.loading ? (

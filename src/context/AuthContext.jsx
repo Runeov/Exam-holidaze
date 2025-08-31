@@ -1,10 +1,26 @@
 // src/context/AuthContext.jsx
+import axios from "axios";
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { readSession } from "../utils/session";
 import { register as apiRegister, login as apiLogin, logout as apiLogout } from "../api/auth";
-import axios from "axios";
+import { getProfile } from "../api/profiles"; // if you want refreshProfile
 
-const AuthContext = createContext(null);
+const AuthContext = createContext(
+  // inside AuthContext
+  function applyProfile(next) {
+    setUser((u) => ({ ...u, ...next }));
+    const raw = localStorage.getItem("holidaze:session");
+    const cur = raw ? JSON.parse(raw) : {};
+    localStorage.setItem(
+      "holidaze:session",
+      JSON.stringify({
+        ...cur,
+        profile: { ...(cur.profile || {}), ...next },
+        user: { ...(cur.user || {}), ...next },
+      }),
+    );
+  },
+);
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState("");
