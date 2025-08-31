@@ -1,11 +1,10 @@
 // src/pages/VenueDetailsPage.jsx
-import React, { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import BookingCalendar from "../components/BookingCalendar";
-
-import { getVenue } from "../api/venues";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { createBooking } from "../api/bookings";
+import { getVenue } from "../api/venues";
+import BookingCalendar from "../components/BookingCalendar";
+import { useAuth } from "../context/AuthContext";
 import { checkAvailability } from "../logic/checkAvailability";
 import { buildDisabledRanges } from "../utils/availability";
 

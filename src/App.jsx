@@ -1,17 +1,15 @@
-// src/App.jsx
-import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useAuth } from "./context/AuthContext";
-import HomePage from "./pages/HomePage";
-import RegisterPage from "./pages/RegisterPage";
-import LoginPage from "./pages/LoginPage";
-import ProfilePage from "./pages/ProfilePage";
-import VenuesPage from "./pages/VenuesPage";
-import VenueDetailsPage from "./pages/VenueDetailsPage";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import NavBar from "./components/NavBar";
-import MyVenuesPage from "./pages/MyVenuesPage";
+import { useAuth } from "./context/AuthContext";
 import CreateVenuePage from "./pages/CreateVenuePage";
+import HomePage from "./pages/HomePage";
+import LoginPage from "./pages/LoginPage";
+import MyVenuesPage from "./pages/MyVenuesPage";
+import ProfilePage from "./pages/ProfilePage";
+import RegisterPage from "./pages/RegisterPage";
 import UserProfilePage from "./pages/UserProfilePage";
+import VenueDetailsPage from "./pages/VenueDetailsPage";
+import VenuesPage from "./pages/VenuesPage";
 
 export default function App() {
   const { loading } = useAuth(); // `isAuthed` isn't in context; navbar uses `user`

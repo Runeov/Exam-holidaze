@@ -18,27 +18,5 @@
   }
 }
 
-@layer components {
-  .btn {
-    @apply inline-block px-4 py-2 rounded-lg font-medium transition-colors;
-  }
-
-  .btn-primary {
-    @apply btn bg-blue-600 text-white hover:bg-blue-700;
-  }
-
-  .btn-secondary {
-    @apply btn bg-gray-600 text-white hover:bg-gray-700;
-  }
-
-  .btn-success {
-    @apply btn bg-green-600 text-white hover:bg-green-700;
-  }
-
-  .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700;
-  }
-}
-
 /* base layout fix */
 html, body, #root { height: 100%; }

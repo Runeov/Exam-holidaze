@@ -1,11 +1,11 @@
 // src/pages/ProfilePage.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { getProfileBookings, deleteBooking } from "../api/bookings";
-import ProfileSettingsForm from "../components/ProfileSettingsForm";
+import { deleteBooking, getProfileBookings } from "../api/bookings";
 import BookingList from "../components/BookingList";
 import EditBookingModal from "../components/EditBookingModal";
+import ProfileSettingsForm from "../components/ProfileSettingsForm";
+import { useAuth } from "../context/AuthContext";
 import { saveProfileAndRefresh } from "../logic/profileSync";
 import MyVenuesPage from "./MyVenuesPage";
 

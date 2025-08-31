@@ -1,5 +1,3 @@
-import { get, save, remove } from "./storage.js";
-
 const KEY = "holidaze:session";
 
 export function readSession() {

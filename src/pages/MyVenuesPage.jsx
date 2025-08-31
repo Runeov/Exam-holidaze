@@ -1,10 +1,10 @@
 // src/pages/MyVenuesPage.jsx
-import React, { useEffect, useState } from "react";
-import { useAuth } from "../context/AuthContext";
-import { getMyVenues, deleteVenue } from "../api/venues";
-import EditVenueModal from "../components/EditVenueModal";
-import EditBookingModal from "../components/EditBookingModal";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { deleteVenue, getMyVenues } from "../api/venues";
+import EditBookingModal from "../components/EditBookingModal";
+import EditVenueModal from "../components/EditVenueModal";
+import { useAuth } from "../context/AuthContext";
 
 export default function MyVenuesPage({ embedded = false }) {
   const { profile } = useAuth();
@@ -38,7 +38,7 @@ export default function MyVenuesPage({ embedded = false }) {
       await deleteVenue(id);
       setVenues((v) => v.filter((x) => x.id !== id));
     } catch (err) {
-      alert("Failed to delete venue: " + (err?.message || ""));
+      alert(`Failed to delete venue: ${err?.message || ""}`);
     }
   }
 

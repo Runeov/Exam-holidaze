@@ -3,10 +3,12 @@
 /** biome-ignore-all lint/correctness/noNestedComponentDefinitions: <explanation> */
 /** biome-ignore-all lint/suspicious/noArrayIndexKey: <explanation> */
 /** biome-ignore-all lint/a11y/useButtonType: <explanation> */
-import React, { useMemo, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { listVenues } from "../api/venues";
+
 const IMG_FALLBACK =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(

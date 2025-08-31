@@ -1,5 +1,6 @@
 ProfileSettingsForm; // src/components/ProfileSettingsForm.jsx
-import React, { useEffect, useState } from "react";
+
+import { useEffect, useState } from "react";
 import { updateProfile } from "../api/profiles";
 
 function isHttpUrl(u) {

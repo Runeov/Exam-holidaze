@@ -1,9 +1,9 @@
 // src/components/EditBookingModal.jsx
-import React, { useEffect, useState } from "react";
-import BookingCalendar from "./BookingCalendar";
+import { useEffect, useState } from "react";
 import { getAuthHeaders } from "../api/auth";
 import { updateBooking } from "../api/bookings";
 import { hasOverlapExcluding, toIsoZMidnight } from "../utils/dates";
+import BookingCalendar from "./BookingCalendar";
 
 const API = "https://v2.api.noroff.dev";
 

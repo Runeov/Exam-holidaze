@@ -1,6 +1,6 @@
-import React, { useEffect } from "react";
-import SearchBar from "../components/SearchBar";
+import { useEffect } from "react";
 import FeaturedVenues from "../components/FeaturedVenues";
+import SearchBar from "../components/SearchBar";
 
 export default function HomePage() {
   useEffect(() => {}, []);

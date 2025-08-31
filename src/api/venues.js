@@ -1,5 +1,5 @@
 // src/api/venues.js
-import { httpGet, httpPost, httpPut, httpDelete } from "./http.js";
+import { httpDelete, httpGet, httpPost, httpPut } from "./http.js";
 
 export function listVenues(
   { page = 1, limit = 25, q, sort, order, withOwner = false, signal } = {},

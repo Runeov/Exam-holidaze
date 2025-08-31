@@ -1,6 +1,6 @@
 // src/components/VenueForm.jsx
 /** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function VenueForm({ mode = "create", initial = {}, onSubmit, submitting, error }) {
   const [venue, setVenue] = useState({

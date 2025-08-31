@@ -1,5 +1,5 @@
 // src/components/EditVenueModal.jsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { getVenue, updateVenue } from "../api/venues";
 
 export default function EditVenueModal({ open, venueId, onClose, onSaved }) {
@@ -19,7 +19,7 @@ export default function EditVenueModal({ open, venueId, onClose, onSaved }) {
         setLoading(false);
         setError("");
       })
-      .catch((e) => {
+      .catch((_e) => {
         setError("Failed to load venue");
         setLoading(false);
       });

@@ -1,5 +1,5 @@
 // src/components/BookingCalendar.jsx
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 

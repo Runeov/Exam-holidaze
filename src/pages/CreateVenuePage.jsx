@@ -1,9 +1,8 @@
 // src/pages/CreateVenuePage.jsx
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import VenueForm from "../components/VenueForm";
-
 import { createVenue } from "../api/venues";
+import VenueForm from "../components/VenueForm";
 
 export default function CreateVenuePage() {
   const [error, setError] = useState("");

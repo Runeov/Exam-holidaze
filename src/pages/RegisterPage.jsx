@@ -1,8 +1,8 @@
 // src/pages/RegisterPage.jsx
-import React, { useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
-import { useNavigate, Link } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import RegisterForm from "../components/RegisterForm";
+import { useAuth } from "../context/AuthContext";
 
 export default function RegisterPage() {
   const { user } = useAuth();

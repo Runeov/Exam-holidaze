@@ -1,5 +1,5 @@
 // src/components/FeaturedVenues.jsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listVenues } from "../api/venues";
 import VenueCard from "./VenueCard";

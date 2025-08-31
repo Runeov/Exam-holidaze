@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
-import React, { useState, useMemo } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom"; // ✅
+import { useAuth } from "../context/AuthContext";
 
 export default function RegisterForm() {
   const { register, error } = useAuth();

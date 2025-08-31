@@ -1,4 +1,4 @@
-import React, { useId, useState } from "react";
+import { useId, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function SearchBar() {
