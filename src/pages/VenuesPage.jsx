@@ -7,6 +7,23 @@ import React, { useMemo, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { listVenues } from "../api/venues";
+const IMG_FALLBACK =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
+      <defs>
+        <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stop-color="#e5e7eb"/>
+          <stop offset="1" stop-color="#d1d5db"/>
+        </linearGradient>
+      </defs>
+      <rect width="160" height="100" fill="url(#g)"/>
+      <g fill="#9ca3af">
+        <circle cx="35" cy="50" r="12"/>
+        <rect x="54" y="42" width="72" height="16" rx="3"/>
+      </g>
+    </svg>`,
+  );
 
 const DEFAULT_LIMIT = 25;
 const API_PAGE_LIMIT = 100;
@@ -286,8 +303,17 @@ export default function VenuesPage() {
                       width="800"
                       height="500"
                       loading={isAboveFold ? "eager" : "lazy"}
-                      fetchpriority={isAboveFold ? "high" : "low"}
+                      fetchPriority={isAboveFold ? "high" : "low"}
                       decoding="async"
+                      onError={(e) => {
+                        const img = e.currentTarget;
+                        // swap to fallback once
+                        if (img.src !== IMG_FALLBACK) {
+                          img.src = IMG_FALLBACK;
+                          img.removeAttribute("srcset"); // stop responsive retries
+                          img.fetchPriority = "low";
+                        }
+                      }}
                     />
                   ) : null}
                 </div>
