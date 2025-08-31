@@ -1,8 +1,10 @@
 // src/api/venues.js
 import { httpGet, httpPost, httpPut, httpDelete } from "./http.js";
 
-// List venues (fast: no _bookings; optionally include owner for cards)
-export function listVenues({ page = 1, limit = 25, q, sort, order, withOwner = false } = {}, auth) {
+export function listVenues(
+  { page = 1, limit = 25, q, sort, order, withOwner = false, signal } = {},
+  auth,
+) {
   const params = {
     page,
     limit,
@@ -11,7 +13,7 @@ export function listVenues({ page = 1, limit = 25, q, sort, order, withOwner = f
     sortOrder: order,
     _owner: withOwner || undefined,
   };
-  return httpGet("/holidaze/venues", { params, ...auth });
+  return httpGet("/holidaze/venues", { params, signal, ...auth });
 }
 
 // Single venue — ALWAYS include bookings + owner on details page
