@@ -129,6 +129,7 @@ export default function RegisterForm() {
       <button
         type="submit"
         disabled={submitting}
+        aria-label="Submit registration form"
         className="w-full rounded bg-blue-600 text-white py-2 disabled:opacity-60"
       >
         {submitting ? "Creating account…" : "Create account"}

@@ -198,6 +198,7 @@ export default function ProfileSettingsForm({ profile, onProfileUpdated }) {
           <button
             type="submit"
             disabled={msg.saving}
+            aria-label="Save profile changes"
             className="px-4 py-2 rounded-lg bg-gray-900 text-white font-semibold disabled:opacity-60"
           >
             {msg.saving ? "Saving…" : "Save profile"}

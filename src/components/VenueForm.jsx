@@ -164,6 +164,15 @@ export default function VenueForm({ mode = "create", initial = {}, onSubmit, sub
       <button
         type="submit"
         disabled={submitting}
+        aria-label={
+          submitting
+            ? mode === "edit"
+              ? "Saving venue"
+              : "Creating venue"
+            : mode === "edit"
+              ? "Save venue"
+              : "Create venue"
+        }
         className="w-full bg-blue-600 text-white py-2 rounded font-semibold disabled:opacity-60"
       >
         {submitting

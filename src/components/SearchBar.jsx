@@ -42,6 +42,7 @@ export default function SearchBar() {
       />
       <button
         type="submit"
+        aria-label="Submit venue search"
         className="col-span-1 rounded-xl bg-gray-900 text-white px-4 py-3 font-semibold"
       >
         Search

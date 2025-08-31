@@ -119,6 +119,7 @@ export default function LoginForm() {
       <button
         type="submit"
         disabled={submitting}
+        aria-label="Submit login form"
         className="w-full rounded bg-green-600 text-white py-2 disabled:opacity-60"
       >
         {submitting ? "Logging in…" : "Log in"}

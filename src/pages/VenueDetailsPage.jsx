@@ -250,6 +250,7 @@ export default function VenueDetailsPage() {
               <button
                 type="submit"
                 disabled={bookState.submitting}
+                aria-label={bookState.submitting ? "Submitting booking" : "Book this venue"}
                 className="w-full py-3 rounded-xl bg-gray-900 text-white font-semibold disabled:opacity-60"
               >
                 {bookState.submitting ? "Booking…" : "Book now"}

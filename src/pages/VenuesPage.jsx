@@ -30,9 +30,6 @@ const IMG_FALLBACK =
 
 // Reusable image with blur-up + fallback
 export function SmartImage({ url, alt, eager = false, width = 800, height = 500 }) {
-  useEffect(() => {
-    document.title = "Holidaze | Home";
-  }, []);
   const [loaded, setLoaded] = useState(false);
 
   // guard if no url
@@ -276,9 +273,16 @@ export default function VenuesPage() {
             value={q ?? ""}
             onChange={(e) => updateParams({ q: e.target.value, page: 1 })}
             placeholder="Search venues…"
+            aria-label="Search venues by name or keyword"
             className="px-3 py-2 rounded-lg border w-56"
           />
-          <button className="px-3 py-2 rounded-lg bg-gray-900 text-white">Search</button>
+
+          <button
+            className="px-3 py-2 rounded-lg bg-gray-900 text-white"
+            aria-label="Submit venue search"
+          >
+            Search
+          </button>
         </form>
 
         {/* Sorting / Limit */}

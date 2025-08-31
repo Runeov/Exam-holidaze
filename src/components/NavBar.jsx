@@ -1,51 +1,169 @@
-import { Link } from "react-router-dom";
+// src/components/NavBar.jsx
+/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
+import React, { useState } from "react";
+import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function NavBar() {
   const { user, profile, token, isAuthed, logout, loading } = useAuth();
+  const [open, setOpen] = useState(false);
 
   const loggedIn = typeof isAuthed === "boolean" ? isAuthed : Boolean(user || profile || token);
   const isManager = loggedIn && profile?.venueManager;
 
+  function linkBase(isActive) {
+    return [
+      "block py-2 px-3 rounded-sm md:p-0",
+      isActive
+        ? "text-blue-700 md:text-blue-700 dark:text-blue-500"
+        : "text-gray-900 hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 dark:text-white dark:hover:bg-gray-700 md:dark:hover:text-blue-500",
+    ].join(" ");
+  }
+
   return (
-    <nav
-      aria-label="Main navigation"
-      className="flex justify-between items-center px-6 py-4 bg-white border-b"
-    >
-      <Link to="/" className="text-lg font-bold">
-        Holidaze
-      </Link>
-      <div className="flex items-center gap-4">
-        <Link to="/venues">Venues</Link>
+    <nav className="bg-white dark:bg-gray-900 fixed w-full z-20 top-0 start-0 border-b border-gray-200 dark:border-gray-600">
+      <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
+        {/* Brand */}
+        <Link to="/" className="flex items-center space-x-3 rtl:space-x-reverse">
+          {/* Replace src with your logo if available */}
+          <img
+            src="/logo.svg"
+            alt="Holidaze"
+            className="h-8"
+            onError={(e) => {
+              // fallback: hide broken image
+              e.currentTarget.style.display = "none";
+            }}
+          />
+          <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">
+            Holidaze
+          </span>
+        </Link>
 
-        {isManager && (
-          <Link
-            to="/venues/create"
-            className="px-3 py-1 rounded bg-green-600 text-white font-medium hover:bg-green-700"
+        {/* Right-side actions (Get started / Manager CTA + burger) */}
+        <div className="flex md:order-2 space-x-3 md:space-x-0 rtl:space-x-reverse items-center">
+          {/* Primary CTA */}
+          {isManager ? (
+            <Link
+              to="/venues/create"
+              className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            >
+              Create venue
+            </Link>
+          ) : loggedIn ? (
+            <Link
+              to="/venues"
+              className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            >
+              Explore venues
+            </Link>
+          ) : (
+            <Link
+              to="/register"
+              className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            >
+              Get started
+            </Link>
+          )}
+
+          {/* Mobile menu button */}
+          <button
+            type="button"
+            className="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600 ml-2"
+            aria-controls="navbar-sticky"
+            aria-expanded={open ? "true" : "false"}
+            onClick={() => setOpen((v) => !v)}
           >
-            Create Venue
-          </Link>
-        )}
+            <span className="sr-only">Open main menu</span>
+            <svg
+              className="w-5 h-5"
+              aria-hidden="true"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 17 14"
+            >
+              <path
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d={open ? "M2 2l13 10M15 2L2 12" : "M1 1h15M1 7h15M1 13h15"}
+              />
+            </svg>
+          </button>
+        </div>
 
-        {loggedIn && !loading ? (
-          <>
-            <Link to="/profile" className="font-semibold">
-              My Profile
-            </Link>
-            <button onClick={logout} type="button" className="text-red-600 hover:underline ml-2">
-              Logout
-            </button>
-          </>
-        ) : (
-          <>
-            <Link to="/register" className="text-blue-600 hover:underline">
-              Register
-            </Link>
-            <Link to="/login" className="text-green-600 hover:underline">
-              Log In
-            </Link>
-          </>
-        )}
+        {/* Collapsible nav links */}
+        <div
+          id="navbar-sticky"
+          className={`items-center justify-between w-full md:flex md:w-auto md:order-1 ${
+            open ? "" : "hidden"
+          }`}
+        >
+          <ul className="flex flex-col p-4 md:p-0 mt-4 font-medium border border-gray-100 rounded-lg bg-gray-50 md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 md:bg-white dark:bg-gray-800 md:dark:bg-gray-900 dark:border-gray-700">
+            {/* Home */}
+            <li>
+              <NavLink
+                to="/"
+                className={({ isActive }) => linkBase(isActive)}
+                end
+                aria-current="page"
+              >
+                Home
+              </NavLink>
+            </li>
+
+            {/* Venues */}
+            <li>
+              <NavLink to="/venues" className={({ isActive }) => linkBase(isActive)}>
+                Venues
+              </NavLink>
+            </li>
+
+            {/* Manager-only: Create Venue (duplicate of CTA for discoverability in menu) */}
+            {isManager && (
+              <li>
+                <NavLink to="/venues/create" className={({ isActive }) => linkBase(isActive)}>
+                  Create Venue
+                </NavLink>
+              </li>
+            )}
+
+            {/* Auth-dependent items */}
+            {loggedIn && !loading ? (
+              <>
+                <li>
+                  <NavLink to="/profile" className={({ isActive }) => linkBase(isActive)}>
+                    My Profile
+                  </NavLink>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={logout}
+                    className="block w-full text-left py-2 px-3 md:py-0 md:px-0 text-red-600 hover:underline"
+                    aria-label="Log out"
+                  >
+                    Logout
+                  </button>
+                </li>
+              </>
+            ) : (
+              <>
+                <li>
+                  <NavLink to="/register" className={({ isActive }) => linkBase(isActive)}>
+                    Register
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink to="/login" className={({ isActive }) => linkBase(isActive)}>
+                    Log In
+                  </NavLink>
+                </li>
+              </>
+            )}
+          </ul>
+        </div>
       </div>
     </nav>
   );

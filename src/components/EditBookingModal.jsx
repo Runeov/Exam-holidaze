@@ -100,16 +100,29 @@ export default function EditBookingModal({ open, booking, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-lg space-y-4">
+      <div
+        className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-lg space-y-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-booking-title"
+      >
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-semibold">Edit booking</h3>
-          <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-800">
+          <h3 id="edit-booking-title" className="text-xl font-semibold">
+            Edit booking
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close modal"
+            title="Close"
+            className="text-gray-500 hover:text-gray-800"
+          >
             ✕
           </button>
         </div>
 
         {loading ? (
-          <p>Loading venue bookings…</p>
+          <p aria-live="polite">Loading venue bookings…</p>
         ) : (
           <>
             <div className="space-y-2">
@@ -140,16 +153,30 @@ export default function EditBookingModal({ open, booking, onClose, onSaved }) {
               />
             </label>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && (
+              <p className="text-sm text-red-600" role="alert">
+                {error}
+              </p>
+            )}
 
             <div className="flex items-center justify-end gap-2 pt-2">
-              <button type="button" onClick={onClose} className="px-3 py-2 rounded-lg border">
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Cancel editing booking"
+                className="border rounded px-3 py-2"
+              >
                 Cancel
               </button>
+              {/* Keeping original stray text node per your instruction; hidden from both view & SR */}
+              <span className="hidden" aria-hidden="true">
+                Cancel
+              </span>
               <button
                 type="button"
                 onClick={onSave}
                 disabled={saving}
+                aria-label="Save booking changes"
                 className="px-4 py-2 rounded-lg bg-gray-900 text-white font-semibold disabled:opacity-60"
               >
                 {saving ? "Saving…" : "Save changes"}
