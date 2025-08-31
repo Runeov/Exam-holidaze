@@ -123,8 +123,8 @@ export default function VenueDetailsPage() {
         <Link to="/venues" className="text-sm underline">
           ← Back to all venues
         </Link>
-        <h1 className="text-3xl md:text-4xl font-bold">{venue?.name}</h1>
-        <p className="text-gray-600">
+        <h1 className="text-3xl md:text-4xl font-bold truncate content-break">{venue?.name}</h1>
+        <p className="name text-gray-600">
           ★ {rating.toFixed(1)} • {city}
           {city && country ? ", " : ""} {country}
         </p>

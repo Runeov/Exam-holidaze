@@ -24,7 +24,14 @@ export default function VenueCard({ venue }) {
       </div>
       <div className="p-4">
         <div className="flex justify-between items-start gap-3">
-          <h3 className="font-semibold line-clamp-1">{venue?.name}</h3>
+          <h3 className="name">{venue?.name}</h3>
+          <p className="place content-break">
+            {venue?.location?.city}
+            {venue?.location?.city && venue?.location?.country ? ", " : ""}
+            {venue?.location?.country}
+          </p>
+          <p className="desc content-break">{venue?.description}</p>
+
           <span className="text-sm rounded-lg bg-gray-100 px-2 py-1">★ {rating.toFixed(1)}</span>
         </div>
         <p className="text-sm text-gray-600 mt-1 line-clamp-1">

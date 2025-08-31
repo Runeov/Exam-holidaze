@@ -1,5 +1,5 @@
 /** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -16,23 +16,59 @@ export default function LoginForm() {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   }
 
+  // --- Inline validation ------------------------------------------------
+  const emailTrimmed = form.email.trim().toLowerCase();
+  const isNoroffStudent = emailTrimmed.endsWith("@stud.noroff.no");
+  const isPasswordLongEnough = form.password.length >= 8;
+
+  const emailWarning = useMemo(() => {
+    if (!form.email) return "";
+    if (!isNoroffStudent) return "Only @stud.noroff.no email addresses are allowed.";
+    return "";
+  }, [form.email, isNoroffStudent]);
+
+  const passwordWarning = useMemo(() => {
+    if (!form.password) return "";
+    if (!isPasswordLongEnough) return "Password must be at least 8 characters.";
+    return "";
+  }, [form.password, isPasswordLongEnough]);
+
   async function onSubmit(e) {
     e.preventDefault();
     setFormError("");
+
     if (!form.email || !form.password) {
       setFormError("Email and password are required.");
       return;
     }
+
+    if (!isNoroffStudent) {
+      setFormError("Only @stud.noroff.no email addresses are allowed.");
+      return;
+    }
+    if (!isPasswordLongEnough) {
+      setFormError("Password must be at least 8 characters long.");
+      return;
+    }
+
     setSubmitting(true);
     const res = await login(form);
     setSubmitting(false);
+
     if (res.ok) {
       const redirectTo = location.state?.from?.pathname || "/profile";
       navigate(redirectTo, { replace: true });
     } else {
-      setFormError(res.error || "Login failed");
+      // ✅ Handle specific 401 Unauthorized response
+      if (res.status === 401) {
+        setFormError("Invalid credentials. Please check your email and password.");
+      } else {
+        setFormError(res.error || "Login failed");
+      }
     }
   }
+
+  const showInlineError = (formError || error) && !(emailWarning || passwordWarning);
 
   return (
     <form onSubmit={onSubmit} className="max-w-md mx-auto space-y-4">
@@ -44,9 +80,11 @@ export default function LoginForm() {
           name="email"
           value={form.email}
           onChange={onChange}
-          placeholder="you@example.com"
+          placeholder="you@stud.noroff.no"
           autoComplete="email"
+          required
         />
+        {emailWarning && <p className="text-amber-600 text-xs mt-1">{emailWarning}</p>}
       </div>
 
       <div>
@@ -59,10 +97,12 @@ export default function LoginForm() {
           onChange={onChange}
           placeholder="••••••••"
           autoComplete="current-password"
+          required
         />
+        {passwordWarning && <p className="text-amber-600 text-xs mt-1">{passwordWarning}</p>}
       </div>
 
-      {(formError || error) && <p className="text-red-600 text-sm">{formError || error}</p>}
+      {showInlineError && <p className="text-red-600 text-sm">{formError || error}</p>}
 
       <button
         type="submit"
