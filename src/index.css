@@ -1,22 +1,153 @@
+/* ---- Tailwind v4 load + plugins ---- */
 @import "tailwindcss";
+@plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/typography";
 
-@layer utilities {
-  /* clamp long names */
-  .name { @apply font-semibold line-clamp-1; }
 
-  /* single-line place/city/country */
-  .place { @apply text-sm text-gray-700 line-clamp-1; }
+/* ---- Design tokens (light) ---- */
+@theme {
+  /* Brand palette (Airbnb warmth + Booking trust) */
+  --color-brand-50:  #f2f6fa;  /* backgrounds / subtle panels */
+  --color-brand-100: #e6eef5;
+  --color-brand-300: #8aa6bf;
+  --color-brand-500: #1e4d7b;  /* primary (links/nav/brand) */
+  --color-brand-700: #153650;
 
-  /* multi-line description */
-  .desc  { @apply text-sm text-gray-600 line-clamp-3; }
+  --color-accent-50:  #fff2f4;
+  --color-accent-100: #ffdfe4;
+  --color-accent-300: #ff8a9a;
+  --color-accent-500: #ff5a5f; /* CTA/action coral */
+  --color-accent-700: #d63f45;
 
-  /* safety: break long words/URLs */
-  .content-break {
-    overflow-wrap: anywhere;      /* modern */
-    word-break: break-word;       /* legacy fallback */
-    hyphens: auto;                /* nicer splits */
-  }
+  /* supporting (success/info/warn/error) */
+  --color-success-500: #16a34a;
+  --color-info-500:    #0284c7;
+  --color-warn-500:    #f59e0b;
+  --color-error-500:   #dc2626;
+
+  /* neutrals (text + surfaces) */
+  --color-surface: #ffffff;
+  --color-muted:   #f7f7f8;
+  --color-ring:    #94a3b8;
+
+  --color-text:         #222222;
+  --color-text-muted:   #60646c;
+
+  /* typography */
+  --font-sans:     "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+                   Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji",
+                   "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-display:  "Satoshi", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+                   Roboto, "Helvetica Neue", Arial;
+
+  /* sizing + radii + shadows */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;     /* default card/button */
+  --radius-xl: 1rem;       /* hero/search */
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md: 0 6px 20px rgba(0,0,0,.08);
+  --shadow-lg: 0 18px 40px rgba(0,0,0,.12);
+
+  /* optional extra breakpoint */
+  --breakpoint-3xl: 1920px;
 }
 
-/* base layout fix */
-html, body, #root { height: 100%; }
+/* ---- Dark theme overrides ---- */
+[data-theme="dark"] {
+  --color-surface: #0f172a;         /* slate-900 */
+  --color-muted:   #111827;         /* gray-900 */
+  --color-brand-50:#0b1a28;
+  --color-brand-300:#51769a;
+  --color-brand-500:#2a6aa5;        /* brighten brand in dark */
+  --color-brand-700:#144166;
+
+  --color-accent-50:#2b0f12;
+  --color-accent-300:#ff8a9a;
+  --color-accent-500:#ff6b70;
+  --color-accent-700:#ff8a9a;
+
+  --color-text:       #e5e7eb;      /* gray-200 */
+  --color-text-muted: #9ca3af;      /* gray-400 */
+  --color-ring:       #64748b;      /* slate-500 */
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
+  --shadow-md: 0 6px 20px rgba(0,0,0,.35);
+  --shadow-lg: 0 18px 40px rgba(0,0,0,.45);
+}
+
+/* ---- Layout container & gutter tokens ---- */
+@theme {
+  --container-max: 1750px;                    /* requested max width */
+  --page-gutter: clamp(1rem, 4vw, 2.5rem);    /* default side padding */
+  --page-gutter-wide: clamp(1.25rem, 6vw, 4rem); /* hero/landing */
+}
+
+/* Hide scrollbars for snap carousels (keeps mouse/touch scroll working) */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* (Optional) respect OS dark preference when you haven't set [data-theme] manually */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) { color-scheme: dark; }
+}
+@media (max-width: 1000px) {
+  :root {
+    --container-max: 100%; /* override from 1750px */
+    --page-gutter: 1rem;   /* tighter side padding */
+    --page-gutter-wide: 1.25rem;
+  }
+}
+@layer base {
+  h2 {
+    @apply text-brand-700 text-2xl font-semibold tracking-tight;
+  }
+
+  @media (max-width: 640px) {
+    h2 {
+      @apply text-xl;
+    }
+  }
+}
+theme {
+  --container-max: 1750px;                    /* requested max width */
+  --page-gutter: clamp(1rem, 4vw, 2.5rem);    /* default side padding */
+  --page-gutter-wide: clamp(1.25rem, 6vw, 4rem); /* hero/landing */
+}
+
+/* Hide scrollbars for snap carousels (keeps mouse/touch scroll working) */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* (Optional) respect OS dark preference when you haven't set [data-theme] manually */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) { color-scheme: dark; }
+}
+
+/* src/styles/layout.css or your global index.css */
+
+
+.hero-section {
+  @apply relative bg-brand-50 rounded-xl shadow-sm mb-12 min-h-screen flex items-center;
+}
+
+.hero-content {
+  @apply px-[var(--page-gutter-wide)] space-y-8 text-center w-full;
+}
+
+.section-card {
+  @apply bg-surface rounded-xl shadow-sm p-6 sm:p-10;
+}
+
+.grid-venues {
+  @apply grid gap-6 sm:grid-cols-2 lg:grid-cols-3;
+}
+
+.page-wrapper {
+  @apply bg-muted min-h-screen w-full;
+}
+.page-container {
+  @apply mx-auto max-w-[var(--container-max)] px-[var(--page-gutter-wide)] pb-16 sm:pb-20;
+}
+

@@ -1,5 +1,3 @@
-// src/utils/dates.js
-
 /** Normalize any date-like to UTC midnight for safe comparisons */
 export function toUtcMidnight(dateLike) {
   const d = new Date(dateLike);

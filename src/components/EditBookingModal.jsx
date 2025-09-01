@@ -1,9 +1,10 @@
 // src/components/EditBookingModal.jsx
+/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
 import { useEffect, useState } from "react";
 import { getAuthHeaders } from "../api/auth";
 import { updateBooking } from "../api/bookings";
 import { hasOverlapExcluding, toIsoZMidnight } from "../utils/dates";
-import BookingCalendar from "./BookingCalendar";
+import BrandedCalendar from "./BrandedCalendar";
 
 const API = "https://v2.api.noroff.dev";
 
@@ -127,7 +128,7 @@ export default function EditBookingModal({ open, booking, onClose, onSaved }) {
           <>
             <div className="space-y-2">
               <span className="block text-sm font-medium">Choose new dates</span>
-              <BookingCalendar
+              <BrandedCaledar
                 bookings={venueBookings}
                 selected={range}
                 onSelect={(next) => {
