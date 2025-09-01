@@ -151,3 +151,6 @@ theme {
   @apply mx-auto max-w-[var(--container-max)] px-[var(--page-gutter-wide)] pb-16 sm:pb-20;
 }
 
+@layer utilities {
+  .grid-venues { @apply grid gap-6 sm:grid-cols-2 lg:grid-cols-3; }
+}

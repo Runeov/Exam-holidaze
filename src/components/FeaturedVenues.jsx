@@ -1,6 +1,6 @@
 // src/components/FeaturedVenues.jsx
 import { Link } from "react-router-dom";
-
+import SmartImage from "./SmartImage";
 export default function FeaturedVenues({ venues = [] }) {
   return (
     <section className="space-y-6">
@@ -22,11 +22,10 @@ export default function FeaturedVenues({ venues = [] }) {
               <Link to={`/venues/${venue.id}`} className="block">
                 <div className="aspect-[16/10] overflow-hidden rounded-t-xl bg-muted">
                   {img?.url ? (
-                    <img
-                      src={img.url}
+                    <SmartImage
+                      url={img.url}
                       alt={img.alt || venue.name}
                       className="h-full w-full object-cover"
-                      loading="lazy"
                       decoding="async"
                     />
                   ) : (
