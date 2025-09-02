@@ -34,7 +34,7 @@ export default function NavBar() {
   }
 
   return (
-    <nav className="bg-surface fixed top-0 start-0 z-20 w-full border-b border-black/5">
+    <nav className="!bg-surface fixed top-0 start-0 z-20 w-full border-b border-black/5 !border-b-0 mb-0 pb-0">
       {/* Wider container + comfy gutters (fallbacks if tokens not defined) */}
       <div className="mx-auto flex max-w-[var(--container-max,1750px)] items-center justify-between px-[var(--page-gutter,clamp(1rem,4vw,2.5rem))] py-4 sm:py-5">
         {/* Brand */}

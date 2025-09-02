@@ -7,6 +7,7 @@ import EditBookingModal from "../components/EditBookingModal";
 import ProfileSettingsForm from "../components/ProfileSettingsForm";
 import { useAuth } from "../context/AuthContext";
 import { saveProfileAndRefresh } from "../logic/profileSync";
+import { popFlash } from "../utils/flash";
 import MyVenuesPage from "./MyVenuesPage";
 
 export default function ProfilePage() {
@@ -15,6 +16,13 @@ export default function ProfilePage() {
   const [state, setState] = useState({ loading: true, error: "", rows: [] });
   const [busyId, setBusyId] = useState(null);
   const [edit, setEdit] = useState({ open: false, booking: null });
+
+  // ✅ One-time flash support (e.g., “Booking confirmed”)
+  const [flash, setFlash] = useState(null);
+  useEffect(() => {
+    const f = popFlash(); // { message, type } or undefined
+    if (f) setFlash(f);
+  }, []);
 
   // local feedback for settings save
   const [savingSettings, setSavingSettings] = useState(false);
@@ -124,6 +132,18 @@ export default function ProfilePage() {
 
   return (
     <div className="p-6 md:p-10 space-y-8">
+      {/* 🔔 Flash banner (add-only, won’t affect existing logic) */}
+      {flash && (
+        // biome-ignore lint/a11y/useSemanticElements: <explanation>
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-800"
+        >
+          <span className="font-semibold">Success:</span> {flash.message}
+        </div>
+      )}
+
       <header className="space-y-1">
         <h1 className="text-3xl md:text-4xl font-bold">My Profile</h1>
         <p className="text-gray-600">
