@@ -115,7 +115,12 @@ export default function MediaCarousel({
                       <button
                         type="button"
                         className="pointer-events-auto inline-flex items-center rounded-full bg-white/90 hover:bg-white px-3 py-1 text-xs md:text-sm font-medium text-gray-900 shadow-sm"
-                        onClick={() => onShowMore?.(m.location)}
+                        onClick={() => {
+                          console.debug("[MediaCarousel] Show more clicked", {
+                            location: m.location,
+                          });
+                          onShowMore?.(m.location);
+                        }}
                         aria-label={`Show more about ${m.location}`}
                       >
                         Show more

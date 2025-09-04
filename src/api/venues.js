@@ -40,3 +40,13 @@ export function getMyVenues(profileName, { withBookings = true } = {}, auth) {
   const params = { _bookings: withBookings || undefined };
   return httpGet(`/holidaze/profiles/${profileName}/venues`, { params, ...auth });
 }
+
+// Search venues by name (wrapper for /holidaze/venues?q=)
+export function searchVenues({ q, page = 1, limit = 25, signal } = {}, auth) {
+  const params = {
+    q: q?.trim() || undefined, // Noroff API does the name matching
+    page,
+    limit,
+  };
+  return httpGet("/holidaze/venues", { params, signal, ...auth });
+}
