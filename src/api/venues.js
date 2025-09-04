@@ -2,7 +2,7 @@
 import { httpDelete, httpGet, httpPost, httpPut } from "./http.js";
 
 export function listVenues(
-  { page = 1, limit = 25, q, sort, order, withOwner = false, signal } = {},
+  { page = 1, limit = 25, q, sort, order, withOwner = false, withBookings = true, signal } = {},
   auth,
 ) {
   const params = {
@@ -12,7 +12,9 @@ export function listVenues(
     sort,
     sortOrder: order,
     _owner: withOwner || undefined,
+    _bookings: withBookings ? true : undefined, // ✅ KEY FIX
   };
+
   return httpGet("/holidaze/venues", { params, signal, ...auth });
 }
 

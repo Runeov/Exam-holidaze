@@ -12,6 +12,7 @@ import UserProfilePage from "./pages/UserProfilePage";
 import VenueDetailsPage from "./pages/VenueDetailsPage";
 import VenuesPage from "./pages/VenuesPage";
 import StyleGuidePage from "./styles/StyleGuidePage";
+import DebugSearchPage from "./test/DebugSearchPage";
 export default function App() {
   const { loading } = useAuth();
 
@@ -35,6 +36,7 @@ export default function App() {
               <Route path="/users/:name" element={<UserProfilePage />} />
               <Route path="/my-venues" element={<MyVenuesPage />} />
               <Route path="/styleguide" element={<StyleGuidePage />} />
+              <Route path="/DebugSearchPage" element={<DebugSearchPage />} />
             </Routes>
           </main>
         </div>
