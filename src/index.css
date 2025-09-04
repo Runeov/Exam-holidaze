@@ -2,10 +2,12 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/forms";
 @plugin "@tailwindcss/typography";
+@tailwind utilities;
+
 
 
 /* ---- Design tokens (light) ---- */
-@theme {
+.data-theme_light {
   /* Brand palette (Airbnb warmth + Booking trust) */
   --color-brand-50:  #f2f6fa;  /* backgrounds / subtle panels */
   --color-brand-100: #e6eef5;
@@ -17,7 +19,7 @@
   --color-accent-100: #ffdfe4;
   --color-accent-300: #ff8a9a;
   --color-accent-500: #ff5a5f; /* CTA/action coral */
-  --color-accent-700: #d63f45;
+--color-accent-700: hotpink;
 
   /* supporting (success/info/warn/error) */
   --color-success-500: #16a34a;
@@ -78,11 +80,7 @@
 }
 
 /* ---- Layout container & gutter tokens ---- */
-@theme {
-  --container-max: 1750px;                    /* requested max width */
-  --page-gutter: clamp(1rem, 4vw, 2.5rem);    /* default side padding */
-  --page-gutter-wide: clamp(1.25rem, 6vw, 4rem); /* hero/landing */
-}
+
 
 /* Hide scrollbars for snap carousels (keeps mouse/touch scroll working) */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -99,22 +97,8 @@
     --page-gutter-wide: 1.25rem;
   }
 }
-@layer base {
-  h2 {
-    @apply text-brand-700 text-2xl font-semibold tracking-tight;
-  }
 
-  @media (max-width: 640px) {
-    h2 {
-      @apply text-xl;
-    }
-  }
-}
-theme {
-  --container-max: 1750px;                    /* requested max width */
-  --page-gutter: clamp(1rem, 4vw, 2.5rem);    /* default side padding */
-  --page-gutter-wide: clamp(1.25rem, 6vw, 4rem); /* hero/landing */
-}
+
 
 /* Hide scrollbars for snap carousels (keeps mouse/touch scroll working) */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -127,30 +111,8 @@ theme {
 
 /* src/styles/layout.css or your global index.css */
 
-
-.hero-section {
-  @apply relative bg-brand-50 rounded-xl shadow-sm mb-12 min-h-screen flex items-center;
-}
-
-.hero-content {
-  @apply px-[var(--page-gutter-wide)] space-y-8 text-center w-full;
-}
-
-.section-card {
-  @apply bg-surface rounded-xl shadow-sm p-6 sm:p-10;
-}
-
-.grid-venues {
-  @apply grid gap-6 sm:grid-cols-2 lg:grid-cols-3;
-}
-
-.page-wrapper {
-  @apply bg-muted min-h-screen w-full;
-}
-.page-container {
-  @apply mx-auto max-w-[var(--container-max)] px-[var(--page-gutter-wide)] pb-16 sm:pb-20;
-}
-
-@layer utilities {
-  .grid-venues { @apply grid gap-6 sm:grid-cols-2 lg:grid-cols-3; }
+@layer components {
+  .heading-black {
+    @apply text-black mb-3 text-xl md:text-2xl font-semibold;
+  }
 }

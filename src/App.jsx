@@ -11,31 +11,34 @@ import RegisterPage from "./pages/RegisterPage";
 import UserProfilePage from "./pages/UserProfilePage";
 import VenueDetailsPage from "./pages/VenueDetailsPage";
 import VenuesPage from "./pages/VenuesPage";
-
+import StyleGuidePage from "./styles/StyleGuidePage";
 export default function App() {
   const { loading } = useAuth();
 
   if (loading) return <p>Loading…</p>;
 
   return (
-    <BrowserRouter>
-      <NavBar />
+    <div className="data-theme_light">
+      <BrowserRouter>
+        <NavBar />
 
-      <div className="bg-brand-50/40 min-h-[100dvh] pt-24 sm:pt-28 pace-y-0">
-        <main className="mx-auto max-w-[var(--container-max)] min-h-screen pace pt-0 mt-0 pb-16 sm:pb-20">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/venues" element={<VenuesPage />} />
-            <Route path="/venues/:id" element={<VenueDetailsPage />} />
-            <Route path="/venues/create" element={<CreateVenuePage />} />
-            <Route path="/users/:name" element={<UserProfilePage />} />
-            <Route path="/my-venues" element={<MyVenuesPage />} />
-          </Routes>
-        </main>
-      </div>
-    </BrowserRouter>
+        <div className="bg-brand-50/40 min-h-[100dvh] pt-24 sm:pt-28 pace-y-0">
+          <main className="mx-auto max-w-[var(--container-max)] min-h-screen pace pt-0 mt-0 pb-16 sm:pb-20">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/venues" element={<VenuesPage />} />
+              <Route path="/venues/:id" element={<VenueDetailsPage />} />
+              <Route path="/venues/create" element={<CreateVenuePage />} />
+              <Route path="/users/:name" element={<UserProfilePage />} />
+              <Route path="/my-venues" element={<MyVenuesPage />} />
+              <Route path="/styleguide" element={<StyleGuidePage />} />
+            </Routes>
+          </main>
+        </div>
+      </BrowserRouter>
+    </div>
   );
 }

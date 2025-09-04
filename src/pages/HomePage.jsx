@@ -226,7 +226,7 @@ export default function HomePage() {
           {/* Compact info cards under SearchBar (half-size images + generated info) */}
           {heroGrid.length > 0 && (
             <section className="mt-8 text-left">
-              <h3 className="mb-3 text-xl md:text-2xl font-semibold text-white">
+              <h3 className="mb-3 text-xl md:text-2xl font-semibold text-black">
                 {selectedPlace ? `Discover ${selectedPlace}` : "Discover destinations"}
               </h3>
               <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -327,14 +327,14 @@ export default function HomePage() {
           aria-label="Booking suggestions"
           className="fixed inset-0 z-[60] grid place-items-center p-4"
         >
-          <div
+          <button
+            type="button"
             className="absolute inset-0 bg-black/40"
-            role="button"
-            tabIndex={0}
             aria-label="Close dialog"
             onClick={closePrompt}
             onKeyDown={onOverlayKeyDown}
           />
+
           <div className="relative z-[61] w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
               Do you want to make a booking?

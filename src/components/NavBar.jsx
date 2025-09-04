@@ -68,7 +68,10 @@ export default function NavBar() {
             />
             <button
               type="submit"
-              className="absolute right-1.5 top-1.5 h-9 rounded-lg px-3 text-sm font-semibold text-white bg-brand-500 hover:brightness-110 focus:outline-none focus:ring-2 ring-brand-500"
+              className="absolute right-1.5 top-1.5 px-3 py-1.5 text-sm font-medium rounded-[var(--radius-md)] text-[--color-text]
+             bg-[--color-brand-500] hover:bg-[--color-brand-700]
+             focus:outline-none focus-visible:ring-2 ring-[--color-brand-500] ring-offset-2 ring-offset-white
+             transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Search
             </button>

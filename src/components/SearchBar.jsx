@@ -113,10 +113,11 @@ export default function SearchBar({ initialQuery = "" }) {
         {/* Submit */}
         <button
           type="submit"
-          className="rounded-full bg-brand-700 px-4 py-2 text-white hover:bg-brand-800
-                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600
-                     focus-visible:ring-offset-2 focus-visible:ring-offset-white"
           aria-label="Search"
+          className="px-4 py-2 text-sm font-medium text-[--color-text] bg-[--color-brand-500] hover:bg-[--color-brand-700]
+             rounded-[var(--radius-md)] transition shadow-sm
+             focus:outline-none focus-visible:ring-2 ring-[--color-brand-500] ring-offset-2 ring-offset-white
+             disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Search
         </button>
