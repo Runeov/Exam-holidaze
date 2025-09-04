@@ -1,4 +1,5 @@
 /** biome-ignore-all lint/a11y/useButtonType: <explanation> */
+/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { listVenues } from "../api/venues";

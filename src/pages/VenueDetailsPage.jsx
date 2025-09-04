@@ -2,7 +2,7 @@
 /** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
 /** biome-ignore-all lint/a11y/useSemanticElements: <explanation> */
 /** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { createBooking } from "../api/bookings";
 import { getVenue } from "../api/venues";
@@ -13,29 +13,42 @@ import { buildDisabledRanges } from "../utils/availability";
 import { pushFlash } from "../utils/flash";
 import { get, remove, save } from "../utils/storage";
 
+// ---------- Helpers (additive, safe) ----------
+function safeDate(dateLike) {
+  const t = Date.parse(dateLike);
+  return Number.isFinite(t) ? new Date(t) : null;
+}
 function toIsoZMidnight(dateLike) {
-  if (!dateLike) return "";
-  const d = new Date(dateLike);
+  const d = safeDate(dateLike);
+  if (!d) return "";
   const z = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   return z.toISOString();
 }
-function fmt(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+function fmt(isoOrLike) {
+  const d = safeDate(isoOrLike);
+  return d
+    ? d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+    : "—";
 }
 function fmtShort(dateLike) {
-  if (!dateLike) return "";
-  const d = new Date(dateLike);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const d = safeDate(dateLike);
+  return d ? d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—";
 }
 function countNights(from, to) {
-  if (!from || !to) return 0;
-  const a = new Date(toIsoZMidnight(from));
-  const b = new Date(toIsoZMidnight(to));
+  const a = safeDate(from);
+  const b = safeDate(to);
+  if (!a || !b) return 0;
   const MS = 24 * 60 * 60 * 1000;
-  const diff = Math.round((b - a) / MS);
+  // work in Z-midnight for stability across TZ
+  const az = new Date(Date.UTC(a.getFullYear(), a.getMonth(), a.getDate()));
+  const bz = new Date(Date.UTC(b.getFullYear(), b.getMonth(), b.getDate()));
+  const diff = Math.round((bz - az) / MS);
   return Math.max(0, diff);
+}
+function clampInt(v, min, max) {
+  const n = Number.parseInt(v, 10);
+  if (!Number.isFinite(n)) return min;
+  return Math.max(min, max ? Math.min(n, max) : n);
 }
 
 const PENDING_KEY = "pendingBooking";
@@ -60,6 +73,14 @@ export default function VenueDetailsPage() {
   const [showRegisterPrompt, setShowRegisterPrompt] = useState(false);
   const [autoBooking, setAutoBooking] = useState(false);
 
+  // Restore previous title on unmount
+  useEffect(() => {
+    const prev = document.title;
+    return () => {
+      document.title = prev;
+    };
+  }, []);
+
   // Close calendar popover when clicking outside
   useEffect(() => {
     const onDoc = (e) => {
@@ -70,7 +91,7 @@ export default function VenueDetailsPage() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  // Fetch details
+  // Fetch details (accepts both {data:{data}} and {data})
   useEffect(() => {
     let on = true;
     (async () => {
@@ -78,11 +99,24 @@ export default function VenueDetailsPage() {
         setStatus("loading");
         document.title = "Holidaze | Venue";
         const res = await getVenue(id, { withBookings: true, withOwner: true }, auth);
-        const data = res?.data?.data;
+        const data = res?.data?.data ?? res?.data ?? null;
         if (on) {
-          setVenue(data || null);
+          // normalize minimal fields to prevent undefined reads
+          const normalized = {
+            id: data?.id ?? id,
+            name: data?.name ?? "Venue",
+            description: data?.description ?? "",
+            rating: Number(data?.rating ?? 0),
+            location: data?.location ?? {},
+            media: Array.isArray(data?.media) ? data.media : [],
+            price: Number(data?.price ?? 0),
+            maxGuests: Number(data?.maxGuests ?? 1),
+            bookings: Array.isArray(data?.bookings) ? data.bookings : [],
+            owner: data?.owner ?? null,
+          };
+          setVenue(normalized);
           setStatus("idle");
-          document.title = `Holidaze | ${data?.name || "Venue"}`;
+          document.title = `Holidaze | ${normalized.name || "Venue"}`;
         }
       } catch (err) {
         console.error("❌ details fetch failed", err);
@@ -148,13 +182,14 @@ export default function VenueDetailsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthed, authLoading, id]);
 
+  // Derivations with safe fallbacks
   const image =
     venue?.media?.[0]?.url ||
     "https://images.unsplash.com/photo-1502672023488-70e25813eb80?q=80&w=1600&auto=format&fit=crop";
-  const rating = Number(venue?.rating ?? 0);
+  const rating = Number.isFinite(Number(venue?.rating)) ? Number(venue?.rating) : 0;
   const { city = "", country = "" } = venue?.location || {};
-  const maxGuests = Number(venue?.maxGuests ?? 1);
-  const price = Number(venue?.price ?? 0);
+  const maxGuests = Number.isFinite(Number(venue?.maxGuests)) ? Number(venue?.maxGuests) : 1;
+  const price = Number.isFinite(Number(venue?.price)) ? Number(venue?.price) : 0;
 
   const nights = countNights(range.from, range.to);
   const total = nights > 0 && Number.isFinite(price) ? nights * price : 0;
@@ -162,10 +197,16 @@ export default function VenueDetailsPage() {
   const hasDates = Boolean(range?.from && range?.to);
   const datesLabel = hasDates ? `${fmtShort(range.from)} → ${fmtShort(range.to)}` : "Dates";
 
+  const disabledRanges = useMemo(
+    () => buildDisabledRanges(Array.isArray(venue?.bookings) ? venue.bookings : []),
+    [venue?.bookings],
+  );
+
   function validate() {
     if (!range?.from || !range?.to) return "Please select both start and end dates.";
-    if (!guests || guests < 1) return "Guests must be at least 1.";
-    if (maxGuests && guests > maxGuests) return `Max guests for this venue is ${maxGuests}.`;
+    const g = clampInt(guests, 1, maxGuests || undefined);
+    if (g < 1) return "Guests must be at least 1.";
+    if (maxGuests && g > maxGuests) return `Max guests for this venue is ${maxGuests}.`;
     return "";
   }
 
@@ -207,7 +248,7 @@ export default function VenueDetailsPage() {
       venueId: id,
       dateFrom: toIsoZMidnight(range.from),
       dateTo: toIsoZMidnight(range.to),
-      guests: Number(guests),
+      guests: clampInt(guests, 1, maxGuests || undefined),
     };
 
     // If not logged in → save pending + prompt register, DO NOT POST
@@ -249,7 +290,7 @@ export default function VenueDetailsPage() {
         </Link>
         <h1 className="text-3xl md:text-4xl font-bold truncate content-break">{venue?.name}</h1>
         <p className="name text-gray-600">
-          ★ {rating.toFixed(1)} • {city}
+          ★ {Number.isFinite(rating) ? rating.toFixed(1) : "0.0"} • {city}
           {city && country ? ", " : ""} {country}
         </p>
         {venue?.owner?.name && (
@@ -263,7 +304,16 @@ export default function VenueDetailsPage() {
       </header>
 
       <div className="rounded-2xl overflow-hidden bg-gray-100 aspect-[16/9]">
-        <img src={image} alt={venue?.name || "Venue"} className="w-full h-full object-cover" />
+        <img
+          src={image}
+          alt={venue?.name || "Venue"}
+          className="w-full h-full object-cover"
+          loading="lazy"
+          onError={(e) => {
+            e.currentTarget.src =
+              "https://images.unsplash.com/photo-1502672023488-70e25813eb80?q=80&w=1600&auto=format&fit=crop";
+          }}
+        />
       </div>
 
       <section className="grid gap-6 md:grid-cols-3">
@@ -284,7 +334,7 @@ export default function VenueDetailsPage() {
             </p>
           )}
 
-          <form onSubmit={onBook} className="space-y-4">
+          <form onSubmit={onBook} className="space-y-4" noValidate>
             {/* Date selector (popover) */}
             <div className="space-y-2">
               <span className="block text-sm font-medium">Choose dates</span>
@@ -326,9 +376,15 @@ export default function VenueDetailsPage() {
                   className="relative z-20 mt-2 w-full rounded-xl border border-black/10 bg-surface p-3 md:p-3 pl-2 shadow-md"
                 >
                   <BookingCalendar
-                    bookings={buildDisabledRanges(venue?.bookings || [])}
+                    bookings={disabledRanges}
                     selected={range}
-                    onSelect={setRange}
+                    onSelect={(sel) => {
+                      // Defensive: ensure shape {from,to}
+                      setRange({
+                        from: sel?.from ?? null,
+                        to: sel?.to ?? null,
+                      });
+                    }}
                     minDate={new Date()}
                     numberOfMonths={2}
                   />
@@ -355,11 +411,13 @@ export default function VenueDetailsPage() {
                 min={1}
                 max={maxGuests || undefined}
                 value={guests}
-                onChange={(e) => setGuests(Number(e.target.value))}
+                onChange={(e) => setGuests(clampInt(e.target.value, 1, maxGuests || undefined))}
                 className="w-full rounded border px-3 py-2
                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600
                            focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                 required
+                inputMode="numeric"
+                pattern="[0-9]*"
               />
             </label>
 
@@ -453,7 +511,6 @@ export default function VenueDetailsPage() {
                 className="rounded-lg bg-brand-700 text-white px-4 py-2 hover:bg-brand-800"
                 onClick={() => {
                   setShowRegisterPrompt(false);
-                  // Send the user to register and bring them back here
                   const next = `/venues/${id}`;
                   navigate(`/register?next=${encodeURIComponent(next)}`);
                 }}

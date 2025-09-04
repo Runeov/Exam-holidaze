@@ -140,13 +140,17 @@ export default function SearchBarDropdown({
         <span className="text-gray-500 flex-1 truncate">{searchLabel}</span>
       </button>
 
+      {/* Floating round search button */}
       <button
         type="button"
         aria-label="Search"
         onClick={runSearch}
         className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full 
-               bg-[color:var(--color-brand-600)] text-white grid place-items-center 
-               shadow hover:brightness-110 active:scale-95 transition"
+             bg-[color:var(--color-brand-500)] text-[color:var(--color-muted)] 
+             grid place-items-center shadow hover:bg-[color:var(--color-accent-700)] 
+             active:scale-95 transition
+             focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 
+             focus-visible:ring-[color:var(--color-accent-500)]"
       >
         <svg
           viewBox="0 0 24 24"
@@ -156,7 +160,6 @@ export default function SearchBarDropdown({
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          aria-hidden="true"
         >
           <circle cx="11" cy="11" r="7" />
           <line x1="21" y1="21" x2="16.65" y2="16.65" />

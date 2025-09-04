@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { listVenues } from "../api/venues";
 import BrandedCalendar from "../components/BrandedCalendar";
 import CalendarDropdown from "../components/CalendarDropdown";
+import DiscoverMoreButton from "../components/DiscoverMoreButton";
 import FilterBadge from "../components/FilterBadge";
 import MediaCarousel from "../components/MediaCarousel";
 import SearchBar from "../components/SearchBar";
@@ -249,54 +250,28 @@ export default function HomePage() {
             />
           </div>
 
-          {/* --- Side-by-side info cards under the carousel --- */}
-          <section className="max-w-5xl mx-auto mt-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              <div className="rounded-2xl bg-white shadow-sm border border-black/5 p-5 md:p-6 text-left">
-                <h3 className="text-xl md:text-2xl font-bold text-brand-700">
-                  Travel tips {suggestionLocation ? `for ${suggestionLocation}` : ""}
-                </h3>
-                <p className="text-text-muted mt-1">
-                  Quick, practical ideas to make your trip smoother and more fun.
-                </p>
-                <ul className="mt-4 space-y-2">
-                  {travelTips.map((t, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm md:text-base">
-                      <span className="mt-[2px]">•</span>
-                      <span>{t}</span>
-                    </li>
-                  ))}
-                </ul>
+          {/* --- Top actions row: Keep the look (card + Discover More on the right) --- */}
+          <div className="max-w-5xl mx-auto w-full">
+            <div className="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              {/* Card wrapper bearing the "Choose filters" label */}
+              <div className="w-full rounded-2xl bg-white border border-black/10 shadow-sm p-6 space-y-4 text-left">
+                <h3 className="text-lg md:text-xl font-semibold text-brand-700">Choose filters</h3>
+                <CalendarDropdown
+                  selected={tempDateRange}
+                  onChange={setTempDateRange}
+                  onApply={(range) => setSelectedDateRange(range)}
+                  onPriceRangeChange={setPriceRange}
+                  onMetaFilterChange={setMetaFilters}
+                  onLocationChange={setSelectedPlace}
+                  minDate={new Date()}
+                />
               </div>
 
-              <div className="rounded-2xl bg-white shadow-sm border border-black/5 p-5 md:p-6 text-left">
-                <h3 className="text-xl md:text-2xl font-bold text-brand-700">Before you book</h3>
-                <p className="text-text-muted mt-1">
-                  A few quick checks to help you pick the right place.
-                </p>
-                <ul className="mt-4 space-y-2">
-                  {planningNotes.map((t, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm md:text-base">
-                      <span className="mt-[2px]">•</span>
-                      <span>{t}</span>
-                    </li>
-                  ))}
-                </ul>
+              {/* Discover More button on the right */}
+              <div className="flex md:justify-end">
+                <DiscoverMoreButton />
               </div>
             </div>
-          </section>
-          {/* --- End info cards --- */}
-
-          <div className="max-w-2xl mx-auto">
-            <CalendarDropdown
-              selected={tempDateRange}
-              onChange={setTempDateRange}
-              onApply={(range) => setSelectedDateRange(range)}
-              onPriceRangeChange={setPriceRange}
-              onMetaFilterChange={setMetaFilters}
-              onLocationChange={setSelectedPlace}
-              minDate={new Date()}
-            />
           </div>
 
           {(selectedPlace || (selectedDateRange?.from && selectedDateRange?.to)) && (
@@ -366,6 +341,88 @@ export default function HomePage() {
           )}
         </div>
       </section>
+      <section className="max-w-5xl mx-auto w-full mt-12">
+        <div className="rounded-2xl bg-white shadow-sm border border-black/10 p-4 md:p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            {/* Travel Tips - Spain */}
+            <div className="rounded-2xl bg-white shadow-sm border border-black/5 p-5 md:p-6 text-left">
+              <h3 className="text-xl md:text-2xl font-bold text-brand-700">
+                Travel tips for Spain
+              </h3>
+              <p className="text-text-muted mt-1">
+                Quick, practical ideas to make your trip smoother and more fun.
+              </p>
+              <ul className="mt-4 space-y-2">
+                <li className="flex items-start gap-2 text-sm md:text-base">
+                  <span className="mt-[2px]">•</span>
+                  <span>
+                    Sample a neighborhood market in Spain to find regional snacks and gifts.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2 text-sm md:text-base">
+                  <span className="mt-[2px]">•</span>
+                  <span>Bookmark offline maps for Spain in case roaming is spotty.</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm md:text-base">
+                  <span className="mt-[2px]">•</span>
+                  <span>Plan one “anchor” activity per day in Spain and leave room to wander.</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm md:text-base">
+                  <span className="mt-[2px]">•</span>
+                  <span>Learn a few local phrases—people in Spain appreciate the effort.</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm md:text-base">
+                  <span className="mt-[2px]">•</span>
+                  <span>
+                    Look up tipping norms for Spain so you’re aligned with local etiquette.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2 text-sm md:text-base">
+                  <span className="mt-[2px]">•</span>
+                  <span>Check local holidays in Spain—popular venues book out early.</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Before you book */}
+            <div className="rounded-2xl bg-white shadow-sm border border-black/5 p-5 md:p-6 text-left">
+              <h3 className="text-xl md:text-2xl font-bold text-brand-700">Before you book</h3>
+              <p className="text-text-muted mt-1">
+                A few quick checks to help you pick the right place.
+              </p>
+              <ul className="mt-4 space-y-2">
+                <li className="flex items-start gap-2 text-sm md:text-base">
+                  <span className="mt-[2px]">•</span>
+                  <span>
+                    Compare flexible vs. non-refundable rates—flex can save stress if plans shift.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2 text-sm md:text-base">
+                  <span className="mt-[2px]">•</span>
+                  <span>
+                    Filter by amenities you actually use (Wi-Fi, parking, breakfast, pet-friendly).
+                  </span>
+                </li>
+                <li className="flex items-start gap-2 text-sm md:text-base">
+                  <span className="mt-[2px]">•</span>
+                  <span>If your dates are firm, check for mid-week discounts.</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm md:text-base">
+                  <span className="mt-[2px]">•</span>
+                  <span>Read a few recent reviews to confirm accuracy and responsiveness.</span>
+                </li>
+                <li className="flex items-start gap-2 text-sm md:text-base">
+                  <span className="mt-[2px]">•</span>
+                  <span>
+                    Set your budget range first, then sort by rating to find strong value.
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      ;
     </main>
   );
 }
