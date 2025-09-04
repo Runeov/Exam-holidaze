@@ -53,7 +53,7 @@ export default function BrandedCalendar({
           row: "grid grid-cols-7 gap-1.5",
           cell: "relative w-10 h-10 sm:w-11 sm:h-11",
           day: "w-full h-full rounded-full grid place-items-center text-sm text-text hover:bg-black/[.06] focus:outline-none focus-visible:ring-2 ring-brand-500",
-          day_selected: "bg-brand-500 text-white",
+          day_selected: "bg-[--color-brand-500] text-white",
           day_range_middle: "bg-brand-50 text-text rounded-md",
           day_disabled: "text-text-muted/40 cursor-not-allowed",
         }}

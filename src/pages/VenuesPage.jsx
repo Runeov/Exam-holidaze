@@ -117,7 +117,7 @@ export default function VenuesPage() {
             />
             <button
               type="button"
-              className="px-3 py-2 rounded-lg bg-brand-500 text-white hover:brightness-110"
+              className="px-3 py-2 rounded-lg bg-[--color-brand-500] text-white hover:brightness-110"
               onClick={() => updateParams({ q, page: 1 })}
             >
               Search

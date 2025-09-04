@@ -26,8 +26,13 @@ export default function CreateVenuePage() {
   }
 
   return (
-    <div className="p-6 md:p-10">
-      <h1 className="text-3xl font-bold mb-6">Create a New Venue</h1>
+    <div
+      className="mx-auto max-w-[720px] md:max-w-[760px] lg:max-w-[820px]
+                 px-[var(--page-gutter)] sm:px-[var(--page-gutter-wide)]
+                 py-8 sm:py-10"
+    >
+      <h1 className="text-3xl font-bold text-[--color-text] mb-6">Create a New Venue</h1>
+
       <VenueForm mode="create" onSubmit={handleCreate} submitting={submitting} error={error} />
     </div>
   );

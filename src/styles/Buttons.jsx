@@ -10,17 +10,30 @@ export function Buttons() {
 
   const variantMap = {
     primary:
-      "bg-[--color-accent-500] text-[--color-text] hover:bg-[--color-accent-700] active:scale-[0.98]",
+      "ring-[color:var(--color-accent-500)] bg-[color:var(--color-brand-500)] text-[color:var(--color-muted)] hover:bg-[color:var(--color-accent-700)] active:scale-[0.98]",
+
     secondary:
-      "bg-[--color-brand-500] text-[--color-text] hover:bg-[--color-brand-700] active:scale-[0.98]",
+      "ring-[color:var(--color-brand-500)] bg-[color:var(--color-brand-300)] text-[color:var(--color-muted)] hover:bg-[color:var(--color-brand-700)] active:scale-[0.98]",
+
     outline:
-      "border border-[--color-accent-500] text-[--color-accent-500] hover:bg-[--color-accent-50] active:scale-[0.98]",
-    danger: "bg-[--color-error-500] text-[--color-text] hover:bg-red-700 active:scale-[0.98]",
+      "ring-[color:var(--color-accent-500)] border border-[color:var(--color-accent-500)] text-[color:var(--color-accent-500)] hover:bg-[color:var(--color-accent-50)] active:scale-[0.98]",
+
+    danger:
+      "ring-[color:var(--color-error-500)] bg-[color:var(--color-error-500)] text-[color:var(--color-text)] hover:bg-[color:var(--color-error-700)] active:scale-[0.98]",
+
+    brand300:
+      "ring-[color:var(--color-brand-500)] bg-[color:var(--color-brand-300)] text-[color:var(--color-text)] hover:bg-[color:var(--color-brand-500)] active:scale-[0.98]",
+
+    brand500:
+      "ring-[color:var(--color-brand-700)] bg-[color:var(--color-brand-500)] text-[color:var(--color-text)] hover:bg-[color:var(--color-brand-700)] active:scale-[0.98]",
+
+    accent500:
+      "ring-[color:var(--color-accent-700)] bg-[color:var(--color-accent-500)] text-[color:var(--color-text)] hover:bg-[color:var(--color-accent-700)] active:scale-[0.98]",
   };
 
   return (
     <section
-      className="p-6 rounded-[var(--radius-md)] bg-[--color-muted] shadow-md space-y-6"
+      className="p-6 rounded-[var(--radius-md)] bg-[--color-surface] shadow-md space-y-6"
       data-theme="light"
     >
       <h2 className="text-2xl font-semibold text-[--color-text]">🔘 Buttons</h2>
@@ -41,6 +54,15 @@ export function Buttons() {
           <button type="button" className={`${base} ${sizeMap.md} ${variantMap.danger}`}>
             Danger
           </button>
+          <button type="button" className={`${variantMap.brand300}`}>
+            Brand 300
+          </button>
+          <button type="button" className={`${variantMap.brand500}`}>
+            Brand 500
+          </button>
+          <button type="button" className={`${variantMap.accent500}`}>
+            Accent 500
+          </button>
         </div>
       </div>
 
@@ -58,15 +80,6 @@ export function Buttons() {
           </button>
           <button type="button" className={`${base} ${sizeMap.lg} ${variantMap.primary}`}>
             Large
-          </button>
-          <button
-            type="button"
-            className="px-4 py-2 text-sm font-medium text-[--color-text]
-             bg-[--color-accent-500] hover:bg-[--color-accent-700]
-             rounded-[var(--radius-md)] transition
-             focus:outline-none focus-visible:ring-2 ring-[--color-accent-500] ring-offset-2"
-          >
-            Hover me
           </button>
         </div>
       </div>

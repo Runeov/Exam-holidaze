@@ -1,7 +1,8 @@
 import { Buttons } from "./Buttons";
 import { Colors } from "./Colors";
+import { TextBoxes } from "./TextBoxes"; // ⬅️ new
 import { Typography } from "./Typography";
-// Optional: remove if not using dark mode preview
+
 // import { ThemePreviews } from "./ThemePreviews";
 
 export default function StyleGuidePage() {
@@ -12,11 +13,10 @@ export default function StyleGuidePage() {
         This page previews the design system in use — including colors, typography, and interactive
         elements.
       </p>
-
       <Colors />
       <Typography />
       <Buttons />
-
+      <TextBoxes /> {/* ⬅️ new section */}
       {/* Optional: Only if dark theme is supported */}
       {/* <ThemePreviews /> */}
     </div>

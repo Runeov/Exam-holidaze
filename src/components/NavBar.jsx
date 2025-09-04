@@ -84,14 +84,14 @@ export default function NavBar() {
           {isManager ? (
             <Link
               to="/venues/create"
-              className="hidden md:inline-flex rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white hover:brightness-110 focus:outline-none focus:ring-2 ring-brand-500"
+              className="hidden md:inline-flex inline-flex items-center justify-center font-medium rounded-[var(--radius-md)] transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 ring-[--color-accent-500] ring-offset-2 text-base px-4 py-2 ring-[color:var(--color-accent-500)] bg-[color:var(--color-brand-500)] text-[color:var(--color-muted)] hover:bg-[color:var(--color-accent-700)] active:scale-[0.98]"
             >
               Create venue
             </Link>
           ) : loggedIn ? (
             <Link
               to="/venues"
-              className="hidden md:inline-flex rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white hover:brightness-110 focus:outline-none focus:ring-2 ring-brand-500"
+              className="hidden md:inline-flex inline-flex items-center justify-center font-medium rounded-[var(--radius-md)] transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 ring-[--color-accent-500] ring-offset-2 text-base px-4 py-2 ring-[color:var(--color-accent-500)] bg-[color:var(--color-brand-500)] text-[color:var(--color-muted)] hover:bg-[color:var(--color-accent-700)] active:scale-[0.98]"
             >
               Explore venues
             </Link>
