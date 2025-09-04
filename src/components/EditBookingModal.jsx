@@ -1,162 +1,140 @@
-// src/components/EditBookingModal.jsx
-import React, { useEffect, useState } from "react";
-import BookingCalendar from "./BookingCalendar";
-import { getAuthHeaders } from "../api/auth";
+/** biome-ignore-all lint/a11y/useButtonType: <explanation> */
+/** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
+import { useEffect, useState } from "react";
 import { updateBooking } from "../api/bookings";
-import { hasOverlapExcluding, toIsoZMidnight } from "../utils/dates";
-
-const API = "https://v2.api.noroff.dev";
+import { useAuth } from "../context/AuthContext";
 
 export default function EditBookingModal({ open, booking, onClose, onSaved }) {
-  const [range, setRange] = useState({ from: null, to: null });
+  const { token } = useAuth();
+
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [guests, setGuests] = useState(1);
-  const [venueBookings, setVenueBookings] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  // Hydrate state when opening
   useEffect(() => {
-    if (!open || !booking) return;
-    setRange({ from: new Date(booking.dateFrom), to: new Date(booking.dateTo) });
-    setGuests(booking.guests || 1);
-    setError("");
-
-    // fetch latest bookings for this venue
-    if (booking?.venue?.id) {
-      setLoading(true);
-      fetch(`${API}/holidaze/venues/${booking.venue.id}?_bookings=true`, {
-        headers: { ...getAuthHeaders() },
-      })
-        .then(async (res) => {
-          if (!res.ok) throw new Error(`Failed to load venue (${res.status})`);
-          const { data } = await res.json();
-          setVenueBookings(data?.bookings || []);
-          setLoading(false);
-        })
-        .catch((e) => {
-          console.error("[EditBookingModal] venue fetch failed", e);
-          setError("Could not load venue bookings.");
-          setLoading(false);
-        });
-    }
-  }, [open, booking]);
-
-  async function onSave() {
     if (!booking) return;
-    if (!range?.from || !range?.to) {
-      setError("Please select both start and end dates.");
-      return;
-    }
-    if (guests < 1) {
-      setError("Guests must be at least 1.");
+    setStartDate(booking.dateFrom?.slice(0, 10) || "");
+    setEndDate(booking.dateTo?.slice(0, 10) || "");
+    setGuests(booking.guests || 1);
+  }, [booking]);
+
+  if (!open || !booking) return null;
+
+  const venue = booking.venue;
+
+  const handleSave = async () => {
+    setError("");
+    const guestsInt = parseInt(guests, 10);
+
+    if (!startDate || !endDate || isNaN(guestsInt)) {
+      setError("All fields are required.");
       return;
     }
 
-    const bookingId = booking.id;
-    const venueId = booking.venue?.id;
-    const dateFromIso = toIsoZMidnight(range.from);
-    const dateToIso = toIsoZMidnight(range.to);
+    if (guestsInt < 1 || guestsInt > 10) {
+      setError("Guests must be between 1 and 10.");
+      return;
+    }
+
+    if (new Date(startDate) > new Date(endDate)) {
+      setError("Start date must be before end date.");
+      return;
+    }
+
+    if (!token) {
+      setError("You must be logged in.");
+      return;
+    }
 
     try {
       setSaving(true);
-      setError("");
 
-      // fresh preflight
-      const pre = await fetch(`${API}/holidaze/venues/${venueId}?_bookings=true`, {
-        headers: { ...getAuthHeaders() },
-      });
-      if (!pre.ok) throw new Error(`Preflight failed (${pre.status})`);
-      const { data: v } = await pre.json();
+      const updated = await updateBooking(
+        booking.id,
+        {
+          dateFrom: startDate,
+          dateTo: endDate,
+          guests: guestsInt,
+        },
+        {
+          auth: {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        },
+      );
 
-      if (hasOverlapExcluding(v?.bookings || [], dateFromIso, dateToIso, bookingId)) {
-        setSaving(false);
-        setError("Those dates overlap another booking for this venue.");
-        return;
-      }
-
-      const updated = await updateBooking(bookingId, {
-        dateFrom: dateFromIso,
-        dateTo: dateToIso,
-        guests,
-      });
-
-      onSaved?.({
-        id: bookingId,
-        dateFrom: updated.dateFrom ?? dateFromIso,
-        dateTo: updated.dateTo ?? dateToIso,
-        guests: updated.guests ?? guests,
-      });
-
-      onClose?.();
-    } catch (e) {
-      console.error("[EditBookingModal] save failed", e);
-      setError(e?.message || "Failed to update booking.");
+      onSaved(updated);
+      onClose();
+    } catch (err) {
+      setError(err.message || "Failed to update booking.");
+    } finally {
       setSaving(false);
     }
-  }
-
-  if (!open) return null;
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-lg space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xl font-semibold">Edit booking</h3>
-          <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-800">
-            ✕
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-lg p-6 w-full max-w-lg shadow space-y-6">
+        <h2 className="text-xl font-semibold">Edit Booking</h2>
+
+        {/* Venue Info */}
+
+        {/* Start Date */}
+        <div>
+          <label className="block text-sm font-medium mb-1">From</label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-full border px-3 py-2 rounded text-sm"
+          />
         </div>
 
-        {loading ? (
-          <p>Loading venue bookings…</p>
-        ) : (
-          <>
-            <div className="space-y-2">
-              <span className="block text-sm font-medium">Choose new dates</span>
-              <BookingCalendar
-                bookings={venueBookings}
-                selected={range}
-                onSelect={(next) => {
-                  setRange(next || { from: null, to: null });
-                  setError("");
-                }}
-                minDate={new Date()}
-              />
-            </div>
+        {/* End Date */}
+        <div>
+          <label className="block text-sm font-medium mb-1">To</label>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-full border px-3 py-2 rounded text-sm"
+          />
+        </div>
 
-            <label className="text-sm block">
-              <span className="block mb-1">Guests</span>
-              <input
-                type="number"
-                min={1}
-                value={guests}
-                onChange={(e) => {
-                  setGuests(Number(e.target.value));
-                  setError("");
-                }}
-                className="w-full rounded border px-2 py-1"
-                required
-              />
-            </label>
+        {/* Guests */}
+        <div>
+          <label className="block text-sm font-medium mb-1">Guests</label>
+          <input
+            type="number"
+            min="1"
+            max="10"
+            value={guests}
+            onChange={(e) => setGuests(e.target.value)}
+            className="w-full border px-3 py-2 rounded text-sm"
+          />
+        </div>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
 
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button type="button" onClick={onClose} className="px-3 py-2 rounded-lg border">
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={onSave}
-                disabled={saving}
-                className="px-4 py-2 rounded-lg bg-gray-900 text-white font-semibold disabled:opacity-60"
-              >
-                {saving ? "Saving…" : "Save changes"}
-              </button>
-            </div>
-          </>
-        )}
+        <div className="flex justify-end gap-2 pt-4">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+          >
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
       </div>
     </div>
   );

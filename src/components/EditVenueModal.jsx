@@ -1,5 +1,5 @@
 // src/components/EditVenueModal.jsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { getVenue, updateVenue } from "../api/venues";
 
 export default function EditVenueModal({ open, venueId, onClose, onSaved }) {
@@ -19,7 +19,7 @@ export default function EditVenueModal({ open, venueId, onClose, onSaved }) {
         setLoading(false);
         setError("");
       })
-      .catch((e) => {
+      .catch((_e) => {
         setError("Failed to load venue");
         setLoading(false);
       });
@@ -60,7 +60,13 @@ export default function EditVenueModal({ open, venueId, onClose, onSaved }) {
       <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl space-y-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">Edit Venue</h2>
-          <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-800">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close edit venue modal"
+            title="Close"
+            className="text-gray-500 hover:text-gray-800"
+          >
             ✕
           </button>
         </div>
@@ -116,13 +122,19 @@ export default function EditVenueModal({ open, venueId, onClose, onSaved }) {
             {error && <p className="text-red-600 text-sm">{error}</p>}
 
             <div className="flex justify-end gap-2 pt-3">
-              <button type="button" onClick={onClose} className="border rounded px-3 py-2">
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Cancel editing venue"
+                className="border rounded px-3 py-2"
+              >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={onSave}
                 disabled={saving}
+                aria-label="Save venue changes"
                 className="bg-blue-600 text-white rounded px-4 py-2 font-medium disabled:opacity-60"
               >
                 {saving ? "Saving…" : "Save Changes"}

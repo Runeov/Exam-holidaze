@@ -1,5 +1,3 @@
-// src/utils/dates.js
-
 /** Normalize any date-like to UTC midnight for safe comparisons */
 export function toUtcMidnight(dateLike) {
   const d = new Date(dateLike);
@@ -7,12 +5,15 @@ export function toUtcMidnight(dateLike) {
 }
 
 /** Treat ranges as [start, end) — end is exclusive */
-export function rangesOverlap(aStart, aEnd, bStart, bEnd) {
-  const A1 = toUtcMidnight(aStart);
-  const A2 = toUtcMidnight(aEnd);
-  const B1 = toUtcMidnight(bStart);
-  const B2 = toUtcMidnight(bEnd);
-  return A1 < B2 && B1 < A2;
+export function rangesOverlap(startA, endA, startB, endB) {
+  const aStart = new Date(startA).getTime();
+  const aEnd = new Date(endA).getTime();
+  const bStart = new Date(startB).getTime();
+  const bEnd = new Date(endB).getTime();
+
+  if (isNaN(aStart) || isNaN(aEnd) || isNaN(bStart) || isNaN(bEnd)) return false;
+
+  return aStart < bEnd && bStart < aEnd;
 }
 
 /** Convert API bookings to disabled ranges for calendars (inclusive of last night) */
@@ -26,9 +27,15 @@ export function bookingsToDisabledRanges(bookings = []) {
   });
 }
 
-/** Any overlap with [dateFrom, dateTo)? */
-export function hasBookingConflict(bookings = [], dateFrom, dateTo) {
+export function hasBookingConflict(bookings = [], dateFrom, dateTo, hasBookingsFlag = true) {
+  if (!hasBookingsFlag || !Array.isArray(bookings) || bookings.length === 0) return false;
+  if (!dateFrom || !dateTo) return false;
   return bookings.some((b) => rangesOverlap(dateFrom, dateTo, b.dateFrom, b.dateTo));
+}
+
+export function isVenueAvailable(venue, from, to) {
+  if (venue._bookings !== true) return true; // treat as fully available
+  return !hasBookingConflict(venue.bookings, from, to, true);
 }
 
 /** Overlap that excludes a given booking id (for edit flows) */

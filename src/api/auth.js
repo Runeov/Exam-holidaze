@@ -1,12 +1,8 @@
-// src/api/auth.js
+import { clearSession, readSession, writeSession } from "../utils/session.js";
 import { httpGet, httpPost } from "./http.js";
-import { readSession, writeSession, clearSession } from "../utils/session.js";
 
 const BASE = "/auth";
 
-/**
- * Register a new user
- */
 export async function register({ email, password, name, venueManager = false }) {
   const payload = { email, password, name, ...(venueManager ? { venueManager: true } : {}) };
   const res = await httpPost(`${BASE}/register`, payload);
@@ -14,14 +10,13 @@ export async function register({ email, password, name, venueManager = false }) 
   return res?.data;
 }
 
-/**
- * Login then ensure an API key exists.
- * Returns { token, profile, apiKey }
- */
 export async function login({ email, password }) {
   const res = await httpPost(`${BASE}/login`, { email, password }, { params: { _holidaze: true } });
 
   const body = res?.data;
+  if (!res || typeof res.data !== "object") {
+    showAlert();
+  }
 
   // Normalize v2 shapes
   const token = body?.data?.accessToken ?? body?.accessToken;

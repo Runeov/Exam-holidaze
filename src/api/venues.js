@@ -1,8 +1,8 @@
 // src/api/venues.js
-import { httpGet, httpPost, httpPut, httpDelete } from "./http.js";
+import { httpDelete, httpGet, httpPost, httpPut } from "./http.js";
 
 export function listVenues(
-  { page = 1, limit = 25, q, sort, order, withOwner = false, signal } = {},
+  { page = 1, limit = 25, q, sort, order, withOwner = false, withBookings = true, signal } = {},
   auth,
 ) {
   const params = {
@@ -12,7 +12,9 @@ export function listVenues(
     sort,
     sortOrder: order,
     _owner: withOwner || undefined,
+    _bookings: withBookings ? true : undefined, // ✅ KEY FIX
   };
+
   return httpGet("/holidaze/venues", { params, signal, ...auth });
 }
 
@@ -39,4 +41,14 @@ export function deleteVenue(id, auth) {
 export function getMyVenues(profileName, { withBookings = true } = {}, auth) {
   const params = { _bookings: withBookings || undefined };
   return httpGet(`/holidaze/profiles/${profileName}/venues`, { params, ...auth });
+}
+
+// Search venues by name (wrapper for /holidaze/venues?q=)
+export function searchVenues({ q, page = 1, limit = 25, signal } = {}, auth) {
+  const params = {
+    q: q?.trim() || undefined, // Noroff API does the name matching
+    page,
+    limit,
+  };
+  return httpGet("/holidaze/venues", { params, signal, ...auth });
 }

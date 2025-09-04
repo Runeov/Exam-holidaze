@@ -1,7 +1,7 @@
 // src/api/bookings.js
 // Consistent with the axios-based http helpers and explicit auth passthrough.
 
-import { httpGet, httpPost, httpPut, httpDelete } from "./http.js";
+import { httpDelete, httpGet, httpPost, httpPut } from "./http.js";
 
 /* ----------------------------- date utilities ----------------------------- */
 

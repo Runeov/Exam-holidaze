@@ -1,8 +1,10 @@
-import React from "react";
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import LoginForm from "../components/LoginForm";
-
 export default function LoginPage() {
+  useEffect(() => {
+    document.title = "Holidaze | Login";
+  }, []);
   return (
     <main className="px-4 py-10">
       <h1 className="text-2xl font-semibold mb-6">Log in</h1>

@@ -1,43 +1,57 @@
-import React from "react";
 import { Link } from "react-router-dom";
 
-export default function VenueCard({ venue }) {
-  const image =
-    venue?.media?.[0]?.url ||
-    "https://images.unsplash.com/photo-1502672023488-70e25813eb80?q=80&w=1600&auto=format&fit=crop";
-  const rating = venue?.rating ?? 0;
-  const city = venue?.location?.city || "";
-  const country = venue?.location?.country || "";
+/**
+ * Minimal, DRY venue card. Reuse everywhere.
+ * Expects: id, name, description, price, maxGuests, media[]
+ */
+export default function VenueCard({ venue = {}, priority = false }) {
+  // Deconstruct for clarity while debugging
+  const { id, name, description, price, maxGuests, media = [] } = venue || {};
+
+  const img = media?.[0];
+  const isAboveFold = priority;
+
+  // Debug: render-level visibility (can be noisy if many cards)
+  console.debug("[VenueCard] render", { id, name, hasImg: Boolean(img?.url) });
 
   return (
-    <Link
-      to={`/venues/${venue.id}`}
-      className="group rounded-2xl overflow-hidden border border-gray-200 bg-white hover:shadow"
-    >
-      <div className="aspect-[16/10] w-full overflow-hidden bg-gray-100">
-        <img
-          src={image}
-          alt={venue?.name || "Venue"}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          loading="lazy"
-        />
-      </div>
-      <div className="p-4">
-        <div className="flex justify-between items-start gap-3">
-          <h3 className="font-semibold line-clamp-1">{venue?.name}</h3>
-          <span className="text-sm rounded-lg bg-gray-100 px-2 py-1">★ {rating.toFixed(1)}</span>
+    <li className="rounded-xl border border-black/10 bg-surface shadow-sm hover:shadow-md transition">
+      <Link
+        to={id ? `/venues/${id}` : "#"}
+        className="block focus:outline-none focus-visible:ring-2 ring-[--color-brand-500] rounded-lg"
+        aria-label={name || "View venue"}
+      >
+        <div className="aspect-[16/10] overflow-hidden rounded-lg bg-muted mb-3">
+          {img?.url ? (
+            <img
+              src={img.url}
+              // If your CDN supports width query params, re-add them; keeping simple while debugging
+              srcSet={`${img.url} 400w, ${img.url} 800w, ${img.url} 1200w`}
+              sizes="(min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw"
+              alt={img.alt || name || "Venue image"}
+              className="h-full w-full object-cover"
+              width="800"
+              height="500"
+              loading={isAboveFold ? "eager" : "lazy"}
+              fetchPriority={isAboveFold ? "high" : "auto"}
+              decoding="async"
+            />
+          ) : (
+            <div className="h-full w-full grid place-items-center text-text-muted">No image</div>
+          )}
         </div>
-        <p className="text-sm text-gray-600 mt-1 line-clamp-1">
-          {city}
-          {city && country ? ", " : ""}
-          {country}
-        </p>
-        {venue?.price && (
-          <p className="text-sm mt-2">
-            <span className="font-semibold">${venue.price}</span> / night
-          </p>
+
+        <h3 className="font-semibold text-text">{name || "Untitled venue"}</h3>
+        {description ? (
+          <p className="text-sm text-text-muted line-clamp-2">{description}</p>
+        ) : (
+          <p className="text-sm text-text-muted">No description</p>
         )}
-      </div>
-    </Link>
+
+        <div className="mt-2 text-sm text-text">
+          €{Number.isFinite(price) ? price : 0} · max {maxGuests ?? 0} guests
+        </div>
+      </Link>
+    </li>
   );
 }
