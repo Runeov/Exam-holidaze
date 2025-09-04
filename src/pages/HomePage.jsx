@@ -1,16 +1,14 @@
-/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
 /** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
-/** biome-ignore-all lint/a11y/noRedundantRoles: <explanation> */
-/** biome-ignore-all lint/a11y/useSemanticElements: <explanation> */
-
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+/** biome-ignore-all lint/a11y/useButtonType: <explanation> */
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listVenues } from "../api/venues";
 import BrandedCalendar from "../components/BrandedCalendar";
 import CalendarDropdown from "../components/CalendarDropdown";
+import FilterBadge from "../components/FilterBadge";
 import MediaCarousel from "../components/MediaCarousel";
 import SearchBar from "../components/SearchBar";
 import SmartImage from "../components/SmartImage";
+import VenuesSections from "../components/VenuesSections";
 import { hasBookingConflict } from "../utils/dates";
 import { firstGoodMedia, generatePlaceInfo, hasGoodMedia, labelForLocation } from "../utils/media";
 
@@ -23,10 +21,20 @@ export default function HomePage() {
   const [selectedPlace, setSelectedPlace] = useState("");
   const [selectedDateRange, setSelectedDateRange] = useState(null);
   const [tempDateRange, setTempDateRange] = useState(null);
+  const [priceSort, setPriceSort] = useState(null);
+  const [priceRange, setPriceRange] = useState({ min: 0, max: 99999 });
+  const [metaFilters, setMetaFilters] = useState({
+    wifi: false,
+    parking: false,
+    breakfast: false,
+    pets: false,
+  });
 
   const lastFetchedPage = useRef(1);
   const isDraining = useRef(false);
   const seenIds = useRef(new Set());
+  const availableRef = useRef(null);
+
   const PAGE_LIMIT = 100;
 
   const identityKey = (v) =>
@@ -40,27 +48,30 @@ export default function HomePage() {
     setVenues((prev) => [...prev, ...incoming]);
   };
 
-  const fetchVenues = async (pageToFetch = 1) => {
-    try {
-      const res = await listVenues({
-        page: pageToFetch,
-        limit: PAGE_LIMIT,
-        sort: "rating",
-        order: "desc",
-        withOwner: false,
-      });
-      const data = res?.data?.data ?? [];
-      appendVenues(data);
-      lastFetchedPage.current = Math.max(lastFetchedPage.current, pageToFetch);
-      setPage(pageToFetch);
-      if (data.length < PAGE_LIMIT) setHasMorePages(false);
-    } catch (err) {
-      if (err?.name !== "AbortError") console.error("listVenues failed", err);
-      setHasMorePages(false);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchVenues = useCallback(
+    async (pageToFetch = 1) => {
+      try {
+        const res = await listVenues({
+          page: pageToFetch,
+          limit: PAGE_LIMIT,
+          sort: "rating",
+          order: "desc",
+          withOwner: false,
+        });
+        const data = res?.data?.data ?? [];
+        appendVenues(data);
+        lastFetchedPage.current = Math.max(lastFetchedPage.current, pageToFetch);
+        setPage(pageToFetch);
+        if (data.length < PAGE_LIMIT) setHasMorePages(false);
+      } catch (err) {
+        if (err?.name !== "AbortError") console.error("listVenues failed", err);
+        setHasMorePages(false);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [PAGE_LIMIT],
+  ); // any used variables from outer scope
 
   const fetchAllRemaining = async () => {
     if (isDraining.current || !hasMorePages) return;
@@ -97,11 +108,12 @@ export default function HomePage() {
     }
   };
 
+  // ✅ useEffect now includes it safely
   useEffect(() => {
     setLoading(true);
     seenIds.current = new Set();
     fetchVenues(1);
-  }, []);
+  }, [fetchVenues]);
 
   const heroSlides = useMemo(() => {
     const toSlide = (v, i) => {
@@ -136,7 +148,7 @@ export default function HomePage() {
     requestAnimationFrame(() => {
       setSelectedPlace(target);
       setTimeout(() => {
-        document.getElementById("available-section")?.scrollIntoView({ behavior: "smooth" });
+        availableRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 100);
     });
   }
@@ -205,223 +217,83 @@ export default function HomePage() {
             <CalendarDropdown
               selected={tempDateRange}
               onChange={setTempDateRange}
-              onApply={(range) => {
-                console.log("✅ Final date range applied:", range);
-                setSelectedDateRange(range);
-              }}
+              onApply={(range) => setSelectedDateRange(range)}
+              onPriceRangeChange={setPriceRange}
+              onMetaFilterChange={setMetaFilters}
+              onLocationChange={setSelectedPlace}
               minDate={new Date()}
             />
           </div>
+          {/* ✅ VENUE LISTS (Available, Unavailable, Recommended) */}
+          {(selectedPlace || (selectedDateRange?.from && selectedDateRange?.to)) && (
+            <>
+              <div className="max-w-2xl mx-auto mt-4 flex flex-wrap items-center justify-between gap-2">
+                {/* Reset Button */}
+                <button
+                  onClick={() => {
+                    setSelectedDateRange(undefined);
+                    setTempDateRange(undefined);
+                    setPriceRange({ min: 0, max: 99999 });
+                    setMetaFilters({
+                      wifi: false,
+                      parking: false,
+                      breakfast: false,
+                      pets: false,
+                    });
+                    setSelectedPlace("");
+                  }}
+                  className="text-sm text-red-600 hover:underline"
+                >
+                  Reset All Filters
+                </button>
+
+                {/* Active Filter Badges */}
+                <div className="flex flex-wrap gap-2 text-sm">
+                  {selectedPlace && (
+                    <FilterBadge label={selectedPlace} onClear={() => setSelectedPlace("")} />
+                  )}
+                  {selectedDateRange?.from && selectedDateRange?.to && (
+                    <FilterBadge
+                      label={`📅 ${selectedDateRange.from.toLocaleDateString()} – ${selectedDateRange.to.toLocaleDateString()}`}
+                      onClear={() => {
+                        setSelectedDateRange(undefined);
+                        setTempDateRange(undefined);
+                      }}
+                    />
+                  )}
+                  {(priceRange.min > 0 || priceRange.max < 99999) && (
+                    <FilterBadge
+                      label={`💰 $${priceRange.min} – $${priceRange.max}`}
+                      onClear={() => setPriceRange({ min: 0, max: 99999 })}
+                    />
+                  )}
+                  {Object.entries(metaFilters).map(([key, value]) =>
+                    value ? (
+                      <FilterBadge
+                        key={key}
+                        label={`✅ ${key.charAt(0).toUpperCase() + key.slice(1)}`}
+                        onClear={() => setMetaFilters((prev) => ({ ...prev, [key]: false }))}
+                      />
+                    ) : null,
+                  )}
+                </div>
+              </div>
+
+              <VenuesSections
+                ref={availableRef}
+                venues={venues}
+                selectedPlace={selectedPlace}
+                selectedDateRange={selectedDateRange}
+                loading={loading}
+                identityKey={identityKey}
+                pickImageUrl={pickImageUrl}
+                priceRange={priceRange}
+                metaFilters={metaFilters}
+              />
+            </>
+          )}
         </div>
       </section>
-
-      {/* ✅ REPLACE YOUR OLD available-section WITH THIS BLOCK */}
-      {(selectedPlace || (selectedDateRange?.from && selectedDateRange?.to)) &&
-        (() => {
-          const targetPlace = selectedPlace?.trim().toLowerCase() ?? "";
-
-          const filteredByLocation = venues.filter((v) => {
-            const fields = [
-              v.name,
-              v.location?.city,
-              v.location?.country,
-              v.location?.address,
-              v.location?.zip,
-            ].filter(Boolean);
-
-            return targetPlace
-              ? fields.some((f) => String(f).toLowerCase().includes(targetPlace))
-              : true;
-          });
-
-          const finalFiltered =
-            selectedDateRange?.from && selectedDateRange?.to
-              ? filteredByLocation.filter(
-                  (v) =>
-                    !hasBookingConflict(v.bookings, selectedDateRange.from, selectedDateRange.to),
-                )
-              : filteredByLocation;
-
-          console.log("🧭 Selected place:", selectedPlace);
-          console.log("🧪 Date range selected:", selectedDateRange);
-          console.log("📦 Total venues:", venues.length);
-          console.log("✅ Filtered available venues:", finalFiltered);
-
-          if (finalFiltered.length === 0) {
-            return (
-              <section
-                id="available-section"
-                className="mt-8 text-left transition-opacity duration-300"
-                aria-busy={loading}
-              >
-                <h3 className="mb-3 text-xl md:text-2xl font-semibold text-black">
-                  {selectedPlace ? `Available in ${selectedPlace}` : `Available Venues`}
-                </h3>
-                <p className="text-text-muted">No venues available for current filters.</p>
-              </section>
-            );
-          }
-
-          return (
-            <section
-              id="available-section"
-              className="mt-8 text-left transition-opacity duration-300"
-              aria-busy={loading}
-            >
-              <h3 className="mb-3 text-xl md:text-2xl font-semibold text-black">
-                {selectedPlace ? `Available in ${selectedPlace}` : `Available Venues`}
-                {selectedDateRange?.from && selectedDateRange?.to && (
-                  <>
-                    {" "}
-                    ({selectedDateRange.from.toDateString()} – {selectedDateRange.to.toDateString()}
-                    )
-                  </>
-                )}
-              </h3>
-
-              <div className="relative -mx-4 px-4">
-                <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-white to-transparent" />
-                <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white to-transparent" />
-
-                <ul
-                  className="hs-viewport flex gap-4 overflow-x-auto overflow-y-visible scroll-smooth snap-x snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none]"
-                  role="list"
-                >
-                  <style>{`.hs-viewport::-webkit-scrollbar { display: none; }`}</style>
-
-                  {finalFiltered.map((v, i) => {
-                    const media = firstGoodMedia(v);
-                    const locLabel = labelForLocation(v);
-                    const key = String(identityKey(v));
-                    const src = pickImageUrl(v);
-
-                    return (
-                      <li
-                        key={`${v.id ?? v._id ?? v.uuid ?? identityKey(v)}-${i}`}
-                        className="snap-start shrink-0 w-[16rem] md:w-[18rem]"
-                      >
-                        <Link
-                          to={`/venues/${v.id ?? v._id ?? v.uuid ?? ""}`}
-                          aria-label={`Open details for ${v.name || locLabel || "venue"}`}
-                          className="block rounded-xl border border-black/10 bg-surface shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
-                        >
-                          <div className="p-3 flex flex-col gap-3">
-                            <div className="rounded-lg overflow-hidden bg-muted h-36">
-                              {src ? (
-                                <SmartImage
-                                  src={src}
-                                  url={src}
-                                  alt={media?.alt || v.name || locLabel || "Location"}
-                                  className="h-full w-full object-cover"
-                                  loading="lazy"
-                                  decoding="async"
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-gray-200 grid place-items-center text-xs text-gray-500">
-                                  No image
-                                </div>
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm text-white font-semibold line-clamp-1">
-                                {v.location?.city}, {v.location?.country}
-                              </p>
-                              <p className="text-xs text-text-muted line-clamp-2 mb-1">{v.name}</p>
-                              <div className="flex justify-between items-center text-[11px] text-text">
-                                <span className="font-medium">
-                                  ${v.price} <span className="text-text-muted">/ night</span>
-                                </span>
-                                {v.rating > 0 && (
-                                  <span className="flex items-center gap-1">
-                                    ⭐ {v.rating.toFixed(1)}
-                                    <span className="text-text-muted">
-                                      ({v.bookings?.length || 0})
-                                    </span>
-                                  </span>
-                                )}
-                              </div>
-                              <button
-                                type="button"
-                                className="mt-2 text-sm font-medium text-brand-600 hover:underline"
-                                onClick={() => {
-                                  console.log("Booking for:", v.name);
-                                }}
-                              >
-                                Book now
-                              </button>
-                            </div>
-                          </div>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            </section>
-          );
-        })()}
-
-      {showPrompt && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Booking suggestions"
-          className="fixed inset-0 z-[60] grid place-items-center p-4"
-        >
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/40"
-            aria-label="Close dialog"
-            onClick={closePrompt}
-            onKeyDown={onOverlayKeyDown}
-          />
-          <div className="relative z-[61] w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Do you want to make a booking?
-            </h3>
-            <p className="text-gray-700 mb-4">
-              We can guide you through a quick booking flow.{" "}
-              {suggestionLocation && (
-                <>
-                  Also, explore more venues in{" "}
-                  <span className="font-medium underline decoration-gray-300 underline-offset-4">
-                    {suggestionLocation}
-                  </span>
-                  .
-                </>
-              )}
-            </p>
-            <div className="flex flex-wrap gap-3 justify-end">
-              <button
-                type="button"
-                className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
-                onClick={closePrompt}
-              >
-                Not now
-              </button>
-              <button
-                type="button"
-                className="rounded-lg bg-brand-700 text-white px-4 py-2 hover:bg-brand-800"
-                onClick={closePrompt}
-              >
-                Start booking
-              </button>
-              {suggestionLocation && (
-                <button
-                  type="button"
-                  className="rounded-lg bg-surface px-4 py-2 ring-1 ring-black/10 hover:bg-black/[.03]"
-                  onClick={() => {
-                    setSelectedPlace(String(suggestionLocation).toLowerCase());
-                    closePrompt();
-                  }}
-                >
-                  More in {suggestionLocation}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 }

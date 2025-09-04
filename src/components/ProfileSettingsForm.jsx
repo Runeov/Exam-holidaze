@@ -1,210 +1,221 @@
-ProfileSettingsForm; // src/components/ProfileSettingsForm.jsx
+/** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
+/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
+import { useRef, useState } from "react";
 
-import { useEffect, useState } from "react";
-import { updateProfile } from "../api/profiles";
+export default function ProfileSettingsForm({ profile, onSave, onProfileUpdated, saving, error }) {
+  const [form, setForm] = useState({
+    bio: profile?.bio || "",
+    venueManager: profile?.venueManager || false,
 
-function isHttpUrl(u) {
-  return !u || /^https?:\/\//i.test(u);
-}
+    avatarFile: null,
+    avatarUrl: profile?.avatar?.url || "",
+    avatarPreview: profile?.avatar?.url || "",
+    useAvatarUrl: !!profile?.avatar?.url,
 
-export default function ProfileSettingsForm({ profile, onProfileUpdated }) {
-  const [pf, setPf] = useState({
-    bio: "",
-    avatarUrl: "",
-    avatarAlt: "",
-    bannerUrl: "",
-    bannerAlt: "",
-    venueManager: false,
+    bannerFile: null,
+    bannerUrl: profile?.banner?.url || "",
+    bannerPreview: profile?.banner?.url || "",
+    useBannerUrl: !!profile?.banner?.url,
   });
-  const [msg, setMsg] = useState({ saving: false, error: "", ok: "" });
 
-  useEffect(() => {
-    if (!profile) return;
-    setPf({
-      bio: profile.bio || "",
-      avatarUrl: profile.avatar?.url || "",
-      avatarAlt: profile.avatar?.alt || "",
-      bannerUrl: profile.banner?.url || "",
-      bannerAlt: profile.banner?.alt || "",
-      venueManager: Boolean(profile.venueManager),
-    });
-  }, [profile]);
+  // Refs for file pickers
+  const avatarFileInputRef = useRef(null);
+  const bannerFileInputRef = useRef(null);
 
-  function onChange(e) {
-    const { name, value, type, checked } = e.target;
-    setPf((s) => ({ ...s, [name]: type === "checkbox" ? checked : value }));
-    setMsg({ saving: false, error: "", ok: "" });
+  function capitalize(s) {
+    return s.charAt(0).toUpperCase() + s.slice(1);
   }
 
-  async function onSubmit(e) {
+  function handleFileChange(e, type) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    setForm((f) => ({
+      ...f,
+      [`${type}File`]: file,
+      [`${type}Preview`]: previewUrl,
+      [`use${capitalize(type)}Url`]: false,
+    }));
+  }
+
+  function handleUrlChange(e, type) {
+    const url = e.target.value;
+    setForm((f) => ({
+      ...f,
+      [`${type}Url`]: url,
+      [`${type}Preview`]: url,
+      [`use${capitalize(type)}Url`]: true,
+      [`${type}File`]: null,
+    }));
+  }
+
+  function setPrimarySource(type, useUrl) {
+    setForm((f) => ({
+      ...f,
+      [`use${capitalize(type)}Url`]: useUrl,
+    }));
+  }
+
+  function handleSubmit(e) {
     e.preventDefault();
-    if (!profile?.name) return;
-
-    setMsg({ saving: true, error: "", ok: "" });
-
-    if (!isHttpUrl(pf.avatarUrl) || !isHttpUrl(pf.bannerUrl)) {
-      setMsg({ saving: false, error: "Avatar/Banner URL must start with http(s)://", ok: "" });
-      return;
-    }
-
-    const payload = {};
-    if (pf.bio !== (profile.bio || "")) payload.bio = pf.bio.trim();
-    if (pf.avatarUrl !== (profile.avatar?.url || "")) {
-      payload.avatarUrl = pf.avatarUrl.trim();
-      payload.avatarAlt = pf.avatarAlt || "";
-    }
-    if (pf.bannerUrl !== (profile.banner?.url || "")) {
-      payload.bannerUrl = pf.bannerUrl.trim();
-      payload.bannerAlt = pf.bannerAlt || "";
-    }
-    if (pf.venueManager !== Boolean(profile.venueManager)) {
-      payload.venueManager = pf.venueManager;
-    }
-
-    if (Object.keys(payload).length === 0) {
-      setMsg({ saving: false, error: "", ok: "No changes to save." });
-      return;
-    }
-
-    try {
-      const updated = await updateProfile(profile.name, payload);
-      onProfileUpdated?.(updated);
-      setPf({
-        bio: updated.bio || "",
-        avatarUrl: updated.avatar?.url || "",
-        avatarAlt: updated.avatar?.alt || "",
-        bannerUrl: updated.banner?.url || "",
-        bannerAlt: updated.banner?.alt || "",
-        venueManager: Boolean(updated.venueManager),
-      });
-      setMsg({ saving: false, error: "", ok: "Profile updated ✅" });
-    } catch (err) {
-      setMsg({ saving: false, error: err?.message || "Failed to update profile", ok: "" });
-    }
+    onSave({
+      bio: form.bio,
+      venueManager: form.venueManager,
+      avatar: form.useAvatarUrl ? form.avatarUrl : form.avatarFile,
+      banner: form.useBannerUrl ? form.bannerUrl : form.bannerFile,
+    });
   }
 
   return (
-    <section className="space-y-4">
-      <h2 className="text-2xl font-semibold">Profile settings</h2>
-      <form
-        onSubmit={onSubmit}
-        className="grid gap-4 md:grid-cols-2 bg-white border rounded-2xl p-4"
-      >
-        <div className="space-y-2">
-          <label className="block text-sm">
-            <span className="block mb-1">Bio</span>
-            <textarea
-              name="bio"
-              value={pf.bio}
-              onChange={onChange}
-              rows={4}
-              className="w-full rounded border px-2 py-1"
-              placeholder="Tell guests a bit about you…"
-            />
-          </label>
+    <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+      <h2 className="text-xl font-semibold">Update Profile Settings</h2>
 
-          <label className="block text-sm">
-            <span className="block mb-1">Venue manager</span>
-            <input
-              type="checkbox"
-              name="venueManager"
-              checked={pf.venueManager}
-              onChange={onChange}
-              className="mr-2 align-middle"
-            />
-            <span className="text-gray-700">I manage venues</span>
-          </label>
-        </div>
+      {/* Bio */}
+      <div>
+        <label className="block font-medium mb-1 text-sm">Bio</label>
+        <textarea
+          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm resize-none"
+          rows={3}
+          value={form.bio}
+          onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
+          placeholder="Tell us a little about yourself..."
+        />
+      </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm">
-            <span className="block mb-1">Avatar URL</span>
-            <input
-              type="url"
-              name="avatarUrl"
-              value={pf.avatarUrl}
-              onChange={onChange}
-              className="w-full rounded border px-2 py-1"
-              placeholder="https://…/avatar.jpg"
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="block mb-1">Avatar alt</span>
-            <input
-              type="text"
-              name="avatarAlt"
-              value={pf.avatarAlt}
-              onChange={onChange}
-              className="w-full rounded border px-2 py-1"
-              placeholder="Profile picture alt text"
-            />
-          </label>
+      {/* Venue Manager */}
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="venueManager"
+          checked={form.venueManager}
+          onChange={(e) => setForm((f) => ({ ...f, venueManager: e.target.checked }))}
+          className="w-4 h-4"
+        />
+        <label htmlFor="venueManager" className="text-sm">
+          I want to manage and host venues
+        </label>
+      </div>
 
-          <label className="block text-sm">
-            <span className="block mb-1">Banner URL</span>
-            <input
-              type="url"
-              name="bannerUrl"
-              value={pf.bannerUrl}
-              onChange={onChange}
-              className="w-full rounded border px-2 py-1"
-              placeholder="https://…/banner.jpg"
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="block mb-1">Banner alt</span>
-            <input
-              type="text"
-              name="bannerAlt"
-              value={pf.bannerAlt}
-              onChange={onChange}
-              className="w-full rounded border px-2 py-1"
-              placeholder="Banner image alt text"
-            />
-          </label>
-        </div>
+      {/* Avatar Section */}
+      <div>
+        <label className="block font-semibold mb-2">Avatar</label>
 
-        {/* Previews */}
-        <div className="md:col-span-2 grid gap-4 md:grid-cols-2">
-          <div className="border rounded-xl p-3">
-            <p className="text-sm font-medium mb-2">Avatar preview</p>
-            {pf.avatarUrl ? (
-              <img
-                src={pf.avatarUrl}
-                alt={pf.avatarAlt || "Avatar"}
-                className="h-24 w-24 rounded-full object-cover"
-              />
-            ) : (
-              <p className="text-sm text-gray-500">No avatar URL</p>
-            )}
-          </div>
-          <div className="border rounded-xl p-3">
-            <p className="text-sm font-medium mb-2">Banner preview</p>
-            {pf.bannerUrl ? (
-              <img
-                src={pf.bannerUrl}
-                alt={pf.bannerAlt || "Banner"}
-                className="w-full h-24 object-cover rounded-lg"
-              />
-            ) : (
-              <p className="text-sm text-gray-500">No banner URL</p>
-            )}
-          </div>
-        </div>
+        {form.avatarPreview && (
+          <img
+            src={form.avatarPreview}
+            alt="Avatar preview"
+            className="w-24 h-24 object-cover rounded-full border border-gray-300 shadow mb-2"
+          />
+        )}
 
-        <div className="md:col-span-2 flex items-center justify-end gap-2">
-          {msg.error && <p className="text-sm text-red-600 mr-auto">{msg.error}</p>}
-          {msg.ok && <p className="text-sm text-green-700 mr-auto">{msg.ok}</p>}
+        <input
+          type="url"
+          placeholder="Or paste avatar image URL"
+          value={form.avatarUrl}
+          onChange={(e) => handleUrlChange(e, "avatar")}
+          className="w-full text-sm border border-gray-300 rounded px-3 py-1 mb-2"
+        />
+
+        {/* Hidden file input */}
+        <input
+          type="file"
+          accept="image/*"
+          ref={avatarFileInputRef}
+          onChange={(e) => handleFileChange(e, "avatar")}
+          className="hidden"
+        />
+
+        <div className="flex gap-2">
           <button
-            type="submit"
-            disabled={msg.saving}
-            aria-label="Save profile changes"
-            className="px-4 py-2 rounded-lg bg-gray-900 text-white font-semibold disabled:opacity-60"
+            type="button"
+            onClick={() => {
+              setPrimarySource("avatar", false);
+              avatarFileInputRef.current?.click();
+            }}
+            className={`px-3 py-1 rounded text-sm ${
+              !form.useAvatarUrl ? "bg-blue-600 text-white" : "border border-gray-300 text-gray-700"
+            }`}
           >
-            {msg.saving ? "Saving…" : "Save profile"}
+            Use Uploaded Image
+          </button>
+          <button
+            type="button"
+            onClick={() => setPrimarySource("avatar", true)}
+            className={`px-3 py-1 rounded text-sm ${
+              form.useAvatarUrl ? "bg-blue-600 text-white" : "border border-gray-300 text-gray-700"
+            }`}
+          >
+            Use URL
           </button>
         </div>
-      </form>
-    </section>
+      </div>
+
+      {/* Banner Section */}
+      <div>
+        <label className="block font-semibold mb-2">Banner</label>
+
+        {form.bannerPreview && (
+          <img
+            src={form.bannerPreview}
+            alt="Banner preview"
+            className="w-full max-w-md h-32 object-cover rounded border border-gray-300 shadow mb-2"
+          />
+        )}
+
+        <input
+          type="url"
+          placeholder="Or paste banner image URL"
+          value={form.bannerUrl}
+          onChange={(e) => handleUrlChange(e, "banner")}
+          className="w-full text-sm border border-gray-300 rounded px-3 py-1 mb-2"
+        />
+
+        {/* Hidden file input */}
+        <input
+          type="file"
+          accept="image/*"
+          ref={bannerFileInputRef}
+          onChange={(e) => handleFileChange(e, "banner")}
+          className="hidden"
+        />
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setPrimarySource("banner", false);
+              bannerFileInputRef.current?.click();
+            }}
+            className={`px-3 py-1 rounded text-sm ${
+              !form.useBannerUrl ? "bg-blue-600 text-white" : "border border-gray-300 text-gray-700"
+            }`}
+          >
+            Use Uploaded Image
+          </button>
+          <button
+            type="button"
+            onClick={() => setPrimarySource("banner", true)}
+            className={`px-3 py-1 rounded text-sm ${
+              form.useBannerUrl ? "bg-blue-600 text-white" : "border border-gray-300 text-gray-700"
+            }`}
+          >
+            Use URL
+          </button>
+        </div>
+      </div>
+
+      {/* Error Message */}
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {/* Submit */}
+      <button
+        type="submit"
+        disabled={saving}
+        className="px-5 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition"
+      >
+        {saving ? "Saving..." : "Save Changes"}
+      </button>
+    </form>
   );
 }

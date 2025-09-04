@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/suspicious/noArrayIndexKey: <explanation> */
 /** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
 import { useEffect, useRef, useState } from "react";
+import StyleGuidePage from "../styles/StyleGuidePage";
 import SmartImage from "./SmartImage";
 
 export default function MediaCarousel({
@@ -9,8 +10,8 @@ export default function MediaCarousel({
   initial = 6,
   step = 6,
   afterIdle = 6,
-  onReachCount, // (count:number, cause: 'init'|'idle'|'io'|'passive') => void
-  onShowMore, // NEW: (location:string) => void
+  onReachCount,
+  onShowMore,
 }) {
   const scroller = useRef(null);
   const sentinel = useRef(null);
@@ -21,14 +22,12 @@ export default function MediaCarousel({
 
   const scrollBy = (dx) => scroller.current?.scrollBy({ left: dx, behavior: "smooth" });
 
-  // Clamp visible if images change
   useEffect(() => {
     setVisible((v) =>
       Math.min(v, images.length, progressive ? Math.max(initial, v) : images.length),
     );
   }, [images.length, progressive, initial]);
 
-  // After page settles, load a few more (idle)
   useEffect(() => {
     if (!progressive || afterIdle <= 0) return;
     const cb = () => {
@@ -48,7 +47,6 @@ export default function MediaCarousel({
     };
   }, [progressive, afterIdle, images.length]);
 
-  // Increment when the user scrolls toward the end (IntersectionObserver)
   useEffect(() => {
     if (!progressive || !sentinel.current) return;
 
@@ -68,7 +66,6 @@ export default function MediaCarousel({
     return () => io.disconnect();
   }, [progressive, step, images.length]);
 
-  // Notify parent with cause
   useEffect(() => {
     if (typeof onReachCount === "function") {
       onReachCount(visible, causeRef.current);
@@ -84,7 +81,20 @@ export default function MediaCarousel({
     );
   }
 
-  const shown = images.slice(0, visible);
+  const shown = [];
+  const seenLocations = new Set();
+
+  for (let i = 0; i < images.length && shown.length < visible; i++) {
+    const image = images[i];
+    const location = image.location;
+
+    if (!location) continue;
+
+    if (!seenLocations.has(location)) {
+      seenLocations.add(location);
+      shown.push(image);
+    }
+  }
 
   return (
     <div className="relative">
@@ -105,16 +115,20 @@ export default function MediaCarousel({
               />
 
               {(m.name || m.location) && (
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 p-3 md:p-4 bg-gradient-to-t from-black/60 to-transparent space-y-1">
-                  {/* MOVE location up & add CTA on the same row */}
+                <>
+                  {/* Location – top center */}
                   {m.location && (
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-white/90 text-xs md:text-sm font-medium line-clamp-1">
-                        {m.location}
-                      </p>
+                    <p className="absolute top-4 left-1/2 -translate-x-1/2 z-10 text-lg md:text-xl font-semibold tracking-tight text-white leading-snug bg-black/50 px-4 py-2 rounded-full backdrop-blur-md">
+                      {m.location}
+                    </p>
+                  )}
+
+                  {/* Show More Button – bottom center */}
+                  {m.location && (
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 pointer-events-auto">
                       <button
                         type="button"
-                        className="pointer-events-auto inline-flex items-center rounded-full bg-white/90 hover:bg-white px-3 py-1 text-xs md:text-sm font-medium text-gray-900 shadow-sm"
+                        className="inline-flex items-center justify-center font-medium rounded-[var(--radius-md)] transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 ring-[--color-accent-500] ring-offset-2 text-lg px-5 py-3 ring-[color:var(--color-brand-500)] bg-[color:var(--color-brand-300)] text-[color:var(--color-muted)] hover:bg-[color:var(--color-brand-700)] active:scale-[0.98]"
                         onClick={() => {
                           console.debug("[MediaCarousel] Show more clicked", {
                             location: m.location,
@@ -128,31 +142,30 @@ export default function MediaCarousel({
                     </div>
                   )}
 
-                  {/* Venue name beneath */}
+                  {/* Name – bottom right corner */}
                   {m.name && (
-                    <p className="text-white text-sm md:text-base font-semibold line-clamp-1">
+                    <p className="absolute bottom-4 right-4 z-10 text-base md:text-lg font-semibold tracking-tight leading-snug text-white bg-black/50 px-3 py-1 rounded-md backdrop-blur-md pointer-events-none">
                       {m.name}
                     </p>
                   )}
-                </div>
+                </>
               )}
             </div>
           </div>
         ))}
-        {/* Sentinel to trigger loading more when near the end */}
+
         {progressive && visible < images.length && (
           <div ref={sentinel} className="shrink-0 w-px h-px" aria-hidden="true" />
         )}
       </div>
 
-      {/* Prev/Next */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-between px-2">
         <button
           type="button"
           aria-label="Previous"
           aria-controls="hero-scroller"
           onClick={() => scrollBy(-400)}
-          className="pointer-events-auto rounded-full bg-surface/80 p-2 shadow-sm ring-1 ring-black/10 hover:bg-surface"
+          className="pointer-events-auto rounded-full bg-surface/80 p-2 ring-1 ring-black/10 hover:bg-surface text-lg font-bold"
         >
           ‹
         </button>
@@ -161,7 +174,7 @@ export default function MediaCarousel({
           aria-label="Next"
           aria-controls="hero-scroller"
           onClick={() => scrollBy(400)}
-          className="pointer-events-auto rounded-full bg-surface/80 p-2 shadow-sm ring-1 ring-black/10 hover:bg-surface"
+          className="pointer-events-auto rounded-full bg-surface/80 p-2 ring-1 ring-black/10 hover:bg-surface text-lg font-bold"
         >
           ›
         </button>

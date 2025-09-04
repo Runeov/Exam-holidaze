@@ -3,13 +3,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { deleteBooking, getProfileBookings } from "../api/bookings";
 import BookingList from "../components/BookingList";
+import BrandedCalendar from "../components/BrandedCalendar";
 import EditBookingModal from "../components/EditBookingModal";
 import ProfileSettingsForm from "../components/ProfileSettingsForm";
 import { useAuth } from "../context/AuthContext";
 import { saveProfileAndRefresh } from "../logic/profileSync";
 import { popFlash } from "../utils/flash";
+import { uploadImageToImgbb } from "../utils/uploadImageToImgbb";
 import MyVenuesPage from "./MyVenuesPage";
-
 export default function ProfilePage() {
   const { isAuthed, loading: authLoading, profile, setProfile } = useAuth();
 
@@ -34,7 +35,11 @@ export default function ProfilePage() {
       if (!isAuthed || !profile?.name) return;
       try {
         setState((s) => ({ ...s, loading: true, error: "" }));
-        const rows = await getProfileBookings(profile.name, { includeVenue: true, limit: 100 });
+        const rows = await getProfileBookings(profile.name, {
+          includeVenue: true,
+          includeCustomer: true,
+          limit: 100,
+        });
         setState({ loading: false, error: "", rows: Array.isArray(rows) ? rows : [] });
       } catch (err) {
         setState({ loading: false, error: err?.message || "Failed to load bookings", rows: [] });
@@ -98,14 +103,32 @@ export default function ProfilePage() {
     if (!profile?.name) return;
     setSavingSettings(true);
     setSettingsError("");
+
     try {
+      let avatar = profile.avatar;
+      if (changes.avatar instanceof File) {
+        avatar = await uploadImageToImgbb(changes.avatar);
+      }
+
+      let banner = profile.banner;
+      if (changes.banner instanceof File) {
+        banner = await uploadImageToImgbb(changes.banner);
+      }
+
+      const update = {
+        ...changes,
+        avatarUrl: avatar?.url,
+        avatarAlt: avatar?.alt,
+        bannerUrl: banner?.url,
+        bannerAlt: banner?.alt,
+      };
+
       const { profile: updated /*, venues */ } = await saveProfileAndRefresh({
         name: profile.name,
-        changes,
+        changes: update,
         withBookings: true,
-        // if your AuthContext exposes applyProfile, you can pass it here too
-        // applyProfile,
       });
+
       // Update UI profile immediately
       setProfile?.(updated);
     } catch (err) {
@@ -159,13 +182,6 @@ export default function ProfilePage() {
         saving={savingSettings}
         error={settingsError}
       />
-
-      {profile?.venueManager && (
-        <div>
-          <h2 className="text-2xl font-semibold mt-10 mb-4">My Venues</h2>
-          <MyVenuesPage embedded />
-        </div>
-      )}
 
       {/* Bookings */}
       {state.loading ? (

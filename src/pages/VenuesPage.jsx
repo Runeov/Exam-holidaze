@@ -1,28 +1,25 @@
-// src/pages/VenuesPage.jsx
+/** biome-ignore-all lint/suspicious/noArrayIndexKey: <explanation> */
+/** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
+/** biome-ignore-all lint/a11y/useButtonType: <explanation> */
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { listVenues } from "../api/venues";
 import VenueGrid from "../components/VenueGrid";
+import { hasBookingConflict } from "../utils/dates";
 
-const SERVER_LIMIT = 100; // API page size
-const PER_PAGE_DEFAULT = 24; // UI default
-const PER_PAGE_CHOICES = [24, 48]; // allowed per-page options
-const CACHE_KEY = "venuesCache_v1"; // bump suffix to invalidate cache
-
-const SORT_FIELDS = [
-  { v: "created", label: "Newest" },
-  { v: "updated", label: "Recently Updated" },
-  { v: "price", label: "Price" },
-  { v: "rating", label: "Rating" },
-  { v: "name", label: "Name" },
-];
+function useQueryParams() {
+  const { search } = useLocation();
+  return Object.fromEntries(new URLSearchParams(search));
+}
 
 function norm(s) {
   return (s ?? "").toString().trim().toLowerCase();
 }
+
 function includes(hay, needle) {
   return norm(hay).includes(norm(needle));
 }
+
 function parseNum(v, fallback) {
   const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
@@ -30,372 +27,315 @@ function parseNum(v, fallback) {
 
 export default function VenuesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const query = useQueryParams();
 
-  // URL state
   const q = searchParams.get("q") || "";
-  // Always include owners in our dataset; URL param still respected for transparency
-  const ownerFlag = (searchParams.get("_owner") ?? "true") === "true";
-
   const page = Math.max(1, parseNum(searchParams.get("page"), 1));
-  const perParam = parseNum(searchParams.get("per"), PER_PAGE_DEFAULT);
-  const per = PER_PAGE_CHOICES.includes(perParam) ? perParam : PER_PAGE_DEFAULT;
-
   const sort = searchParams.get("sort") || "created";
-  const order = (searchParams.get("order") || "desc").toLowerCase() === "asc" ? "asc" : "desc";
+  const order =
+    (searchParams.get("order") || searchParams.get("sortOrder") || "desc").toLowerCase() === "asc"
+      ? "asc"
+      : "desc";
 
-  // Data state
   const [loading, setLoading] = useState(false);
   const [allVenues, setAllVenues] = useState([]);
-  const [meta, setMeta] = useState({ totalCount: 0, pageCount: 0 });
 
-  // Initial load: try localStorage cache first; otherwise fetch all pages once
+  // Filters from URL
+  const filters = {
+    place: query.place?.toLowerCase(),
+    from: query.from ? new Date(query.from) : undefined,
+    to: query.to ? new Date(query.to) : undefined,
+    min: query.min ? Number(query.min) : 0,
+    max: query.max ? Number(query.max) : 99999,
+    features: query.features
+      ? Array.isArray(query.features)
+        ? query.features
+        : [query.features]
+      : [],
+  };
+
+  const hasActiveFilters = Boolean(
+    filters.place ||
+      filters.from ||
+      filters.to ||
+      filters.min > 0 ||
+      filters.max < 99999 ||
+      (filters.features && filters.features.length > 0),
+  );
+
   useEffect(() => {
     let cancelled = false;
 
-    function loadFromCache() {
-      try {
-        const raw = localStorage.getItem(CACHE_KEY);
-        if (!raw) return false;
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed?.data)) return false;
-
-        console.group("[VenuesPage] cache hit");
-        console.log("items:", parsed.data.length);
-        console.log("cachedAt:", new Date(parsed.cachedAt).toISOString());
-        console.groupEnd();
-
-        setAllVenues(parsed.data);
-        setMeta({
-          totalCount: parsed.data.length,
-          pageCount: Math.ceil(parsed.data.length / SERVER_LIMIT),
-        });
-        return true;
-      } catch (e) {
-        console.warn("[VenuesPage] cache read failed:", e);
-        return false;
-      }
-    }
-
     async function fetchAll() {
-      console.group("[VenuesPage] fetchAll (no-sort API; local sort)");
-      console.log("ownerFlag:", ownerFlag);
       setLoading(true);
       try {
-        // Fetch page 1 WITHOUT sort/order/q (we want full corpus once)
-        const first = await listVenues({ page: 1, limit: SERVER_LIMIT, withOwner: ownerFlag });
-
+        const first = await listVenues({ page: 1, limit: 100 });
         if (cancelled) return;
 
-        const totalCount = first?.data?.meta?.totalCount ?? 0;
+        let venues = Array.isArray(first?.data?.data) ? first.data.data : [];
         const pageCount = first?.data?.meta?.pageCount ?? 1;
-        let acc = Array.isArray(first?.data?.data) ? first.data.data : [];
 
-        console.log(
-          "page1 totalCount:",
-          totalCount,
-          "pageCount:",
-          pageCount,
-          "page1 items:",
-          acc.length,
-        );
-
-        // Remaining pages
-        const promises = [];
+        const requests = [];
         for (let p = 2; p <= pageCount; p++) {
-          promises.push(listVenues({ page: p, limit: SERVER_LIMIT, withOwner: ownerFlag }));
+          requests.push(listVenues({ page: p, limit: 100 }));
         }
 
-        if (promises.length) {
-          const rest = await Promise.all(promises);
-          if (cancelled) return;
-          for (let i = 0; i < rest.length; i++) {
-            const pageData = rest[i]?.data?.data ?? [];
-            console.log(
-              `page${i + 2} items:`,
-              Array.isArray(pageData) ? pageData.length : "not array",
-            );
-            if (Array.isArray(pageData)) acc = acc.concat(pageData);
+        const responses = await Promise.all(requests);
+        for (const res of responses) {
+          if (Array.isArray(res?.data?.data)) {
+            venues = venues.concat(res.data.data);
           }
         }
 
-        console.log("accumulated items:", acc.length);
-        setAllVenues(acc);
-        setMeta({ totalCount, pageCount });
-
-        // Cache it
-        try {
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ data: acc, cachedAt: Date.now() }));
-          console.log("[VenuesPage] cache stored:", acc.length);
-        } catch (e) {
-          console.warn("[VenuesPage] cache write failed:", e);
-        }
+        setAllVenues(venues);
       } catch (e) {
-        console.error("Failed to load venues", e);
-        setAllVenues([]);
-        setMeta({ totalCount: 0, pageCount: 0 });
+        console.error("Failed to fetch venues", e);
       } finally {
         if (!cancelled) setLoading(false);
-        console.groupEnd();
       }
+      return () => {
+        cancelled = true;
+      };
     }
 
-    const usedCache = loadFromCache();
-    if (!usedCache) fetchAll();
+    fetchAll();
+  }, []);
 
-    return () => {
-      cancelled = true;
-    };
-    // We only want to run once on mount for cache/fetch bootstrap.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerFlag]);
-
-  // Client filter + LOCAL SORT (in-memory)
   const filteredSorted = useMemo(() => {
-    const query = norm(q);
-    let out = allVenues;
+    let out = [...allVenues];
 
-    // Filter: name/description/location/owner
-    if (query) {
-      out = allVenues.filter((v) => {
-        const nameHit = includes(v?.name, query) || includes(v?.description, query);
-
-        const loc = v?.location || {};
+    // Search
+    if (q) {
+      const qNorm = norm(q);
+      out = out.filter((v) => {
+        const name = includes(v.name, qNorm);
+        const desc = includes(v.description, qNorm);
+        const loc = v.location || {};
         const locHit =
-          includes(loc.address, query) ||
-          includes(loc.city, query) ||
-          includes(loc.country, query) ||
-          includes(loc.continent, query) ||
-          includes(loc.zip, query);
-
-        const ownerHit = includes(v?.owner?.name, query) || includes(v?.owner?.email, query);
-
-        return nameHit || locHit || ownerHit;
+          includes(loc.city, qNorm) ||
+          includes(loc.country, qNorm) ||
+          includes(loc.address, qNorm) ||
+          includes(loc.zip, qNorm);
+        return name || desc || locHit;
       });
     }
 
-    // Sort locally by chosen field
+    // Place
+    if (filters.place) {
+      out = out.filter((v) => {
+        const loc = v.location || {};
+        return (
+          includes(v.name, filters.place) ||
+          includes(loc.city, filters.place) ||
+          includes(loc.country, filters.place) ||
+          includes(loc.zip, filters.place)
+        );
+      });
+    }
+
+    // Date range
+    if (filters.from && filters.to) {
+      out = out.filter((v) => !hasBookingConflict(v.bookings, filters.from, filters.to));
+    }
+
+    // Price range
+    out = out.filter((v) => v.price >= filters.min && v.price <= filters.max);
+
+    // Features
+    for (const feature of filters.features) {
+      out = out.filter((v) => v.meta?.[feature] === true);
+    }
+
+    // Sort
     const asc = order === "asc";
-    out = [...out].sort((a, b) => {
+    out = out.sort((a, b) => {
       const av = a?.[sort];
       const bv = b?.[sort];
 
-      // Handle nested fields if needed later (e.g., "owner.name")
-      // For now we assume top-level fields as per requirement
       if (av == null && bv == null) return 0;
       if (av == null) return 1;
       if (bv == null) return -1;
 
-      // Dates (ISO strings) sort lexicographically fine; but we can improve robustness:
-      const isDateLike = (val) => typeof val === "string" && /\d{4}-\d{2}-\d{2}T/.test(val);
+      // Dates
+      const aTime = Date.parse(av);
+      const bTime = Date.parse(bv);
+      if (!isNaN(aTime) && !isNaN(bTime)) {
+        return asc ? aTime - bTime : bTime - aTime;
+      }
 
+      // Numbers
       if (typeof av === "number" && typeof bv === "number") {
         return asc ? av - bv : bv - av;
       }
-      if (isDateLike(av) && isDateLike(bv)) {
-        const aTime = Date.parse(av);
-        const bTime = Date.parse(bv);
-        return asc ? aTime - bTime : bTime - aTime;
-      }
-      // Fallback to string compare
+
+      // Strings / fallback
       return asc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
     });
 
-    console.debug("[VenuesPage] filter+localSort", {
-      q,
-      before: allVenues.length,
-      after: out.length,
-      sort,
-      order,
-    });
-
     return out;
-  }, [q, allVenues, sort, order]);
+  }, [allVenues, q, filters, sort, order]);
 
-  // Client pagination after filter+sort
-  const pageCount = Math.max(1, Math.ceil(filteredSorted.length / per));
-  const safePage = Math.min(page, pageCount);
-  const start = (safePage - 1) * per;
-  const end = start + per;
-  const pageItems = filteredSorted.slice(start, end);
+  // Pagination
+  const PER_PAGE = 24;
+  const pageCount = Math.ceil(filteredSorted.length / PER_PAGE);
+  const safePage = Math.min(page, pageCount || 1);
+  const start = (safePage - 1) * PER_PAGE;
+  const pageItems = filteredSorted.slice(start, start + PER_PAGE);
 
-  console.debug("[VenuesPage] pagination", {
-    per,
-    pageRequested: page,
-    pageUsed: safePage,
-    pageCount,
-    start,
-    end,
-    pageItems: pageItems.length,
-  });
+  // ---------- UI helpers: Sort tabs ----------
+  const sortFields = [
+    { key: "created", label: "Created" },
+    { key: "updated", label: "Updated" },
+    { key: "price", label: "Price" },
+    { key: "rating", label: "Rating" },
+    { key: "name", label: "Name" },
+  ];
 
-  // Helpers to update URL params (DRY)
-  function setParam(name, value) {
-    const next = new URLSearchParams(searchParams);
-    if (value === undefined || value === null || value === "") next.delete(name);
-    else next.set(name, String(value));
-    // Reset to page 1 when changing per, sort, or order to avoid empty pages
-    if (["per", "sort", "order"].includes(name)) next.set("page", "1");
-    setSearchParams(next);
+  function updateParams(next) {
+    const current = Object.fromEntries(searchParams);
+    const merged = { ...current, ...next, page: "1" };
+    if (merged.order) merged.sortOrder = merged.order; // Noroff naming compat
+    setSearchParams(merged);
   }
 
-  const pageOptions = useMemo(
-    () => Array.from({ length: pageCount }, (_, i) => i + 1),
-    [pageCount],
-  );
+  function handleSelectSort(fieldKey) {
+    updateParams({ sort: fieldKey });
+  }
+
+  function toggleOrder() {
+    updateParams({ order: order === "asc" ? "desc" : "asc" });
+  }
+
+  // ---------- Simple pager handlers ----------
+  const canPrev = safePage > 1;
+  const canNext = safePage < (pageCount || 1);
+
+  function goPrev() {
+    if (!canPrev) return;
+    const current = Object.fromEntries(searchParams);
+    setSearchParams({ ...current, page: String(safePage - 1), sortOrder: order });
+  }
+
+  function goNext() {
+    if (!canNext) return;
+    const current = Object.fromEntries(searchParams);
+    setSearchParams({ ...current, page: String(safePage + 1), sortOrder: order });
+  }
 
   return (
-    <div className="bg-muted min-h-screen">
-      <div className="p-[var(--page-gutter)] max-w-[var(--container-max)] mx-auto space-y-6 bg-surface rounded-xl shadow-sm">
-        <header className="flex items-end justify-between gap-3 flex-wrap">
-          <div className="space-y-1">
-            <h1 className="text-3xl font-bold text-text">Venues</h1>
-            <p className="text-text-muted">
-              Showing <b>{pageItems.length}</b> of <b>{filteredSorted.length}</b>
-              {q ? (
-                <>
-                  {" "}
-                  for “<b>{q}</b>”
-                </>
-              ) : null}{" "}
-              · Page <b>{safePage}</b> / {pageCount}
-            </p>
-          </div>
+    <div className="min-h-screen bg-muted py-6">
+      <div className="max-w-6xl mx-auto bg-white rounded-xl p-6 shadow-sm space-y-6">
+        <header className="space-y-2">
+          <h1 className="text-2xl font-bold">Venues</h1>
+          <p className="text-sm text-gray-500">
+            Showing {pageItems.length} of {filteredSorted.length} results
+          </p>
 
-          <Link
-            to="/"
-            className="text-sm underline text-[--color-brand-700] hover:text-[--color-brand-500]"
-          >
-            Back to Home
-          </Link>
+          {/* Sort Tabs (fields + order toggle) */}
+          <div className="flex flex-wrap items-center gap-2 pt-2" role="tablist" aria-label="Sort">
+            <div className="flex flex-wrap gap-1" aria-label="Sort fields">
+              {sortFields.map((f) => {
+                const active = sort === f.key;
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    className={[
+                      "px-3 py-1.5 rounded-full text-sm border transition",
+                      active
+                        ? "bg-[color:var(--color-brand-600)] text-white border-transparent"
+                        : "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200",
+                    ].join(" ")}
+                    onClick={() => handleSelectSort(f.key)}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="h-6 w-px bg-gray-200 mx-1" aria-hidden />
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={true}
+              aria-label={`Toggle order: currently ${order.toUpperCase()}`}
+              className="px-3 py-1.5 rounded-full text-sm border bg-white hover:bg-gray-50 text-gray-800 border-gray-200 inline-flex items-center gap-1"
+              onClick={toggleOrder}
+              title={`Order: ${order.toUpperCase()}`}
+            >
+              <span className="font-medium">Order</span>
+              <span className="inline-flex items-center">
+                {order === "asc" ? "ASC ↑" : "DESC ↓"}
+              </span>
+            </button>
+          </div>
         </header>
 
-        {/* Controls row: Sort, Order, Per-page, Page switcher */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Sort field */}
-          <label className="text-sm text-text flex items-center gap-2">
-            <span>Sort by</span>
-            <select
-              value={sort}
-              onChange={(e) => setParam("sort", e.target.value)}
-              className="rounded-[var(--radius-md)] border border-black/10 bg-white px-3 py-1.5 text-sm
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-brand-500]"
+        {/* CTA if no filters */}
+        {!hasActiveFilters && (
+          <div className="rounded-lg border border-dashed border-gray-300 bg-muted p-6 text-center">
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">Not sure where to go?</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Use the search bar to find venues by location, date, price, or amenities.
+            </p>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 rounded-full bg-brand-600 text-white px-5 py-2 text-sm font-medium hover:bg-brand-700 transition"
             >
-              {SORT_FIELDS.map((opt) => (
-                <option key={opt.v} value={opt.v}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
+              Start Your Search
+            </Link>
+          </div>
+        )}
 
-          {/* Order */}
-          <label className="text-sm text-text flex items-center gap-2">
-            <span>Order</span>
-            <select
-              value={order}
-              onChange={(e) => setParam("order", e.target.value)}
-              className="rounded-[var(--radius-md)] border border-black/10 bg-white px-3 py-1.5 text-sm
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-brand-500]"
-            >
-              <option value="desc">Desc</option>
-              <option value="asc">Asc</option>
-            </select>
-          </label>
-
-          {/* Per page */}
-          <label className="text-sm text-text flex items-center gap-2">
-            <span>Per page</span>
-            <select
-              value={per}
-              onChange={(e) => setParam("per", Number(e.target.value))}
-              className="rounded-[var(--radius-md)] border border-black/10 bg-white px-3 py-1.5 text-sm
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-brand-500]"
-            >
-              {PER_PAGE_CHOICES.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {/* Page selector (only if >1 page) */}
-          {pageCount > 1 && (
-            <label className="text-sm text-text flex items-center gap-2 ml-auto">
-              <span>Page</span>
-              <select
-                value={safePage}
-                onChange={(e) => setParam("page", Number(e.target.value))}
-                className="rounded-[var(--radius-md)] border border-black/10 bg-white px-3 py-1.5 text-sm
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-brand-500]"
-              >
-                {pageOptions.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-        </div>
-
-        {/* Grid */}
         {loading ? (
-          <p className="text-text-muted">Loading venues…</p>
-        ) : pageItems.length ? (
+          <p className="text-gray-500">Loading venues…</p>
+        ) : pageItems.length > 0 ? (
           <VenueGrid items={pageItems} />
         ) : (
-          <p className="text-text-muted">No venues found.</p>
+          <p className="text-gray-500">No venues found.</p>
         )}
 
-        {/* Pager buttons */}
-        {pageCount > 1 && (
-          <nav className="mt-4 flex items-center justify-center gap-2" aria-label="Pagination">
-            <button
-              type="button"
-              className="rounded-[var(--radius-md)] border border-black/10 bg-white px-3 py-1.5 text-sm
-                         disabled:opacity-50 disabled:cursor-not-allowed
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-brand-500]"
-              onClick={() => setParam("page", 1)}
-              disabled={safePage === 1}
-            >
-              « First
-            </button>
-            <button
-              type="button"
-              className="rounded-[var(--radius-md)] border border-black/10 bg-white px-3 py-1.5 text-sm
-                         disabled:opacity-50 disabled:cursor-not-allowed
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-brand-500]"
-              onClick={() => setParam("page", safePage - 1)}
-              disabled={safePage <= 1}
-            >
-              ‹ Prev
-            </button>
-            <span className="text-sm text-text px-2">
-              Page <b>{safePage}</b> of {pageCount}
-            </span>
-            <button
-              type="button"
-              className="rounded-[var(--radius-md)] border border-black/10 bg-white px-3 py-1.5 text-sm
-                         disabled:opacity-50 disabled:cursor-not-allowed
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-brand-500]"
-              onClick={() => setParam("page", safePage + 1)}
-              disabled={safePage >= pageCount}
-            >
-              Next ›
-            </button>
-            <button
-              type="button"
-              className="rounded-[var(--radius-md)] border border-black/10 bg-white px-3 py-1.5 text-sm
-                         disabled:opacity-50 disabled:cursor-not-allowed
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[--color-brand-500]"
-              onClick={() => setParam("page", pageCount)}
-              disabled={safePage === pageCount}
-            >
-              Last »
-            </button>
-          </nav>
-        )}
+        {/* Simple Pager */}
+        <div className="flex items-center justify-center gap-4 pt-4">
+          <button
+            type="button"
+            onClick={goPrev}
+            disabled={!canPrev}
+            className={[
+              "px-4 py-2 rounded-full border text-sm",
+              canPrev
+                ? "bg-white text-gray-800 border-gray-200 hover:bg-gray-50"
+                : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed",
+            ].join(" ")}
+            aria-disabled={!canPrev}
+          >
+            Prev
+          </button>
+
+          <span className="text-sm text-gray-600">
+            Page <span className="font-semibold">{safePage}</span> of{" "}
+            <span className="font-semibold">{pageCount || 1}</span>
+          </span>
+
+          <button
+            type="button"
+            onClick={goNext}
+            disabled={!canNext}
+            className={[
+              "px-4 py-2 rounded-full border text-sm",
+              canNext
+                ? "bg-white text-gray-800 border-gray-200 hover:bg-gray-50"
+                : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed",
+            ].join(" ")}
+            aria-disabled={!canNext}
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );
