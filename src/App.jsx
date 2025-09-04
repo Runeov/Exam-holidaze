@@ -1,5 +1,7 @@
 // src/App.jsx
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+// ✅ Import background from src/assets/images
+import holidazeBg from "./assets/images/holidaze_bg_example_new.png";
 import NavbarWithSearch from "./components/NavbarWithSearch";
 import { useAuth } from "./context/AuthContext";
 import CreateVenuePage from "./pages/CreateVenuePage";
@@ -24,11 +26,12 @@ export default function App() {
       <BrowserRouter>
         <NavbarWithSearch />
 
-        {/* Background applied here */}
+        {/* ✅ Background applied here (kept your classes intact) */}
         <div
-          className="min-h-[100dvh] pt-24 sm:pt-28 pace-y-0 bg-cover bg-center bg-no-repeat"
+          className="bg-brand-50/40 min-h[100dvh] pt-24 sm:pt-28 pace-y-0 bg-cover bg-center bg-no-repeat"
           style={{
-            backgroundImage: "url('/assets/images/holidaze_bg_example_new.png')",
+            // Optional: add a subtle overlay by stacking a gradient first
+            backgroundImage: `linear-gradient(rgba(16,17,23,0.08), rgba(16,17,23,0.08))`,
           }}
         >
           <main className="mx-auto max-w-[var(--container-max)] min-h-screen pace pt-0 mt-0 pb-16 sm:pb-20">

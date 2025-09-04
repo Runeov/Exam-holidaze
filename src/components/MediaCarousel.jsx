@@ -109,7 +109,7 @@ export default function MediaCarousel({
               <SmartImage
                 url={m.url}
                 alt={m.alt || `Image ${i + 1}`}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover object-center"
                 eager={i < 2}
                 decoding="async"
               />

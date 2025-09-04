@@ -51,9 +51,8 @@ export default function NavbarWithSearch() {
           <img
             src="/images/logo.dark.png"
             alt="Holidaze"
-            className="h-10 w-10 rounded-full object-cover hidden dark:inline"
+            className="h-20 w-20 rounded-full object-cover hidden dark:inline"
           />
-          <span className="font-bold text-lg text-black dark:text-white">Holidaze</span>
         </Link>
 
         {/* Center: SearchBarDropdown */}

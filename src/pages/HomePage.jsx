@@ -71,7 +71,7 @@ export default function HomePage() {
       }
     },
     [PAGE_LIMIT],
-  ); // any used variables from outer scope
+  );
 
   const fetchAllRemaining = async () => {
     if (isDraining.current || !hasMorePages) return;
@@ -108,7 +108,6 @@ export default function HomePage() {
     }
   };
 
-  // ✅ useEffect now includes it safely
   useEffect(() => {
     setLoading(true);
     seenIds.current = new Set();
@@ -138,6 +137,43 @@ export default function HomePage() {
   }, [venues]);
 
   const suggestionLocation = useMemo(() => heroSlides[0]?.location || "", [heroSlides]);
+
+  // --- Location-aware tips (stable order per location) ---
+  const travelTips = useMemo(() => {
+    const loc = suggestionLocation || "your destination";
+    const base = [
+      `Check local holidays in ${loc}—popular venues book out early.`,
+      `Sample a neighborhood market in ${loc} to find regional snacks and gifts.`,
+      `Public transit in ${loc} can beat traffic—grab a day pass if available.`,
+      `Pack layers: weather in ${loc} can change quickly between morning and night.`,
+      `Learn a few local phrases—people in ${loc} appreciate the effort.`,
+      `Bookmark offline maps for ${loc} in case roaming is spotty.`,
+      `Try one lesser-known museum or park in ${loc} to avoid the crowds.`,
+      `Look up tipping norms for ${loc} so you’re aligned with local etiquette.`,
+      `Plan one “anchor” activity per day in ${loc} and leave room to wander.`,
+      `Check if tap water is potable in ${loc} before you buy bottled.`,
+    ];
+    let seed = 0;
+    for (let i = 0; i < loc.length; i++) seed = (seed * 31 + loc.charCodeAt(i)) >>> 0;
+    const arr = [...base];
+    for (let i = arr.length - 1; i > 0; i--) {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      const j = seed % (i + 1);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr.slice(0, 6);
+  }, [suggestionLocation]);
+
+  const planningNotes = useMemo(
+    () => [
+      "Compare flexible vs. non-refundable rates—flex can save stress if plans shift.",
+      "Filter by amenities you actually use (Wi-Fi, parking, breakfast, pet-friendly).",
+      "If your dates are firm, check for mid-week discounts.",
+      "Read a few recent reviews to confirm accuracy and responsiveness.",
+      "Set your budget range first, then sort by rating to find strong value.",
+    ],
+    [],
+  );
 
   function handleShowMore(loc) {
     if (!loc) return;
@@ -213,6 +249,44 @@ export default function HomePage() {
             />
           </div>
 
+          {/* --- Side-by-side info cards under the carousel --- */}
+          <section className="max-w-5xl mx-auto mt-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <div className="rounded-2xl bg-white shadow-sm border border-black/5 p-5 md:p-6 text-left">
+                <h3 className="text-xl md:text-2xl font-bold text-brand-700">
+                  Travel tips {suggestionLocation ? `for ${suggestionLocation}` : ""}
+                </h3>
+                <p className="text-text-muted mt-1">
+                  Quick, practical ideas to make your trip smoother and more fun.
+                </p>
+                <ul className="mt-4 space-y-2">
+                  {travelTips.map((t, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm md:text-base">
+                      <span className="mt-[2px]">•</span>
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="rounded-2xl bg-white shadow-sm border border-black/5 p-5 md:p-6 text-left">
+                <h3 className="text-xl md:text-2xl font-bold text-brand-700">Before you book</h3>
+                <p className="text-text-muted mt-1">
+                  A few quick checks to help you pick the right place.
+                </p>
+                <ul className="mt-4 space-y-2">
+                  {planningNotes.map((t, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm md:text-base">
+                      <span className="mt-[2px]">•</span>
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </section>
+          {/* --- End info cards --- */}
+
           <div className="max-w-2xl mx-auto">
             <CalendarDropdown
               selected={tempDateRange}
@@ -224,11 +298,10 @@ export default function HomePage() {
               minDate={new Date()}
             />
           </div>
-          {/* ✅ VENUE LISTS (Available, Unavailable, Recommended) */}
+
           {(selectedPlace || (selectedDateRange?.from && selectedDateRange?.to)) && (
             <>
               <div className="max-w-2xl mx-auto mt-4 flex flex-wrap items-center justify-between gap-2">
-                {/* Reset Button */}
                 <button
                   onClick={() => {
                     setSelectedDateRange(undefined);
@@ -247,7 +320,6 @@ export default function HomePage() {
                   Reset All Filters
                 </button>
 
-                {/* Active Filter Badges */}
                 <div className="flex flex-wrap gap-2 text-sm">
                   {selectedPlace && (
                     <FilterBadge label={selectedPlace} onClear={() => setSelectedPlace("")} />
