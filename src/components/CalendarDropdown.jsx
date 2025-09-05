@@ -14,13 +14,17 @@ export default function CalendarDropdown({
   onApply,
   onPriceRangeChange,
   onMetaFilterChange,
-  onLocationChange, // ✅ NEW
+  onLocationChange,
   minDate,
   disabled,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("dates");
   const popoverRef = useRef(null);
+  const handleApplyPrice = () => {
+    onPriceRangeChange?.(priceRange); // persist current range
+    setIsOpen?.(false); // close popover if available
+  };
 
   const [priceRange, setPriceRange] = useState({
     min: 0,
@@ -34,8 +38,14 @@ export default function CalendarDropdown({
     pets: false,
   });
 
-  const [locationInput, setLocationInput] = useState(""); // ✅
+  const [locationInput, setLocationInput] = useState("");
 
+  const handleApplyFilters = () => {
+    // If parent expects a push (deferred model):
+    onMetaFilterChange?.(metaFilters);
+    // Close the popover:
+    setIsOpen?.(false);
+  };
   const label =
     selected?.from && selected?.to
       ? `${fmt(selected.from)} – ${fmt(selected.to)}`
@@ -94,6 +104,14 @@ export default function CalendarDropdown({
     }
   };
 
+  const CTA_PRIMARY =
+    "inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-semibold rounded-full border border-[var(--color-brand-600,#2563eb)] bg-[var(--color-brand-600,#2563eb)] text-white shadow-sm hover:bg-[var(--color-brand-700,#1d4ed8)] hover:shadow-md active:scale-95 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand-500,#3b82f6)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed";
+
+  const CTA_SECONDARY =
+    "inline-flex items-center justify-center rounded-full border px-5 py-2 text-sm font-medium transition ";
+  ("border-black/10 bg-white text-black hover:bg-black/[.03] active:scale-95 ");
+  ("focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white");
+
   return (
     <div className="space-y-2 relative">
       <span className="block text-sm font-medium">Choose filters</span>
@@ -121,7 +139,6 @@ export default function CalendarDropdown({
           aria-modal="true"
         >
           <div className="rounded-2xl border p-3 bg-white space-y-4">
-            {/* 🔘 Tabs */}
             <div className="flex border-b border-gray-200 text-sm font-medium">
               {["dates", "price", "filters", "location"].map((tab) => (
                 <button
@@ -138,7 +155,6 @@ export default function CalendarDropdown({
               ))}
             </div>
 
-            {/* 📅 Dates Tab */}
             {activeTab === "dates" && (
               <div>
                 <DayPicker
@@ -150,15 +166,13 @@ export default function CalendarDropdown({
                   showOutsideDays
                   disabled={disabled}
                 />
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-red-500 mt-2">
                   Select a start and end date. Booked dates are disabled.
                 </p>
-                <div className="mt-3 flex justify-end gap-2">
+                <div className="mt-3 flex justify-center gap-2 text-red-500">
                   <button
                     type="button"
-                    className="rounded-lg border border-black/10 px-3 py-2 hover:bg-black/[.03]
-                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600
-                               focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                    className={CTA_PRIMARY}
                     onClick={handleApply}
                     disabled={!selected?.from || !selected?.to}
                   >
@@ -168,13 +182,11 @@ export default function CalendarDropdown({
               </div>
             )}
 
-            {/* 💰 Price Tab */}
             {activeTab === "price" && (
               <div className="space-y-4">
                 <div>
                   <span className="block text-sm font-medium mb-1">Price Range ($)</span>
                   <div className="space-y-2">
-                    {/* Min Price */}
                     <div className="flex items-center gap-2">
                       <label htmlFor="min-price" className="text-sm text-gray-700 w-16">
                         Min
@@ -191,7 +203,6 @@ export default function CalendarDropdown({
                       <span className="text-sm w-20 text-gray-500">${priceRange.min}</span>
                     </div>
 
-                    {/* Max Price */}
                     <div className="flex items-center gap-2">
                       <label htmlFor="max-price" className="text-sm text-gray-700 w-16">
                         Max
@@ -209,10 +220,28 @@ export default function CalendarDropdown({
                     </div>
                   </div>
                 </div>
+
+                {/* ⬇️ New: Apply button for Range tab */}
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-semibold
+          rounded-full border border-blue-600
+          bg-blue-600 text-red shadow-sm
+          hover:bg-blue-700 hover:shadow-md active:scale-95 transition
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
+          focus-visible:ring-offset-2 focus-visible:ring-offset-white
+          disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleApplyPrice}
+                    disabled={Number(priceRange?.min) > Number(priceRange?.max)}
+                    aria-disabled={Number(priceRange?.min) > Number(priceRange?.max)}
+                  >
+                    Apply
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* 🧩 Filters Tab */}
             {activeTab === "filters" && (
               <div className="space-y-2">
                 <span className="block text-sm font-medium mb-1">Amenities</span>
@@ -228,10 +257,25 @@ export default function CalendarDropdown({
                     </label>
                   ))}
                 </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-semibold
+          rounded-full border border-blue-600
+          bg-blue-600 text-red shadow-sm
+          hover:bg-blue-700 hover:shadow-md active:scale-95 transition
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
+          focus-visible:ring-offset-2 focus-visible:ring-offset-white
+          disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleApplyFilters}
+                  >
+                    Apply
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* 📍 Location Tab */}
             {activeTab === "location" && (
               <div className="space-y-4">
                 <div>
@@ -243,18 +287,26 @@ export default function CalendarDropdown({
                     type="text"
                     value={locationInput}
                     onChange={(e) => setLocationInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && locationInput?.trim()) handleApplyLocation();
+                    }}
                     placeholder="Search by city, country, zip..."
                     className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
                   />
                 </div>
-                <div className="flex justify-end">
+                <div className="flex justify-center">
                   <button
                     type="button"
-                    className="rounded-lg border border-black/10 px-3 py-2 text-sm hover:bg-black/[.03]
-                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600
-                               focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                    onClick={handleLocationApply}
-                    disabled={!locationInput.trim()}
+                    onMouseDown={(e) => e.preventDefault()} // stops focus shift → prevents onBlur closers
+                    onClick={() => handleApplyDates({ close: false })}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-semibold
+             rounded-full border border-[var(--color-brand-600,#2563eb)]
+             bg-[var(--color-brand-600,#2563eb)] text-white shadow-sm
+             hover:bg-[var(--color-brand-700,#1d4ed8)] hover:shadow-md active:scale-95 transition
+             focus:outline-none focus-visible:ring-2
+             focus-visible:ring-[var(--color-brand-500,#3b82f6)]
+             focus-visible:ring-offset-2 focus-visible:ring-offset-white
+             disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Apply
                   </button>

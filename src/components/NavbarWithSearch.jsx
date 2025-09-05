@@ -1,10 +1,9 @@
-/** biome-ignore-all lint/a11y/noSvgWithoutTitle: <explanation> */
-/** biome-ignore-all lint/a11y/useButtonType: <explanation> */
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+// src/components/NavbarWithSearch.jsx
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { getProfileBookings } from "../api/bookings";
 import { useAuth } from "../context/AuthContext";
-import SearchBarDropdown from "./SearchBarDropdown"; // ✅ You requested this version
+import SearchBarDropdown from "./SearchBarDropdown";
 
 export default function NavbarWithSearch() {
   const { user, profile, token, isAuthed, logout } = useAuth();
@@ -24,6 +23,14 @@ export default function NavbarWithSearch() {
   const isManager = loggedIn && profile?.venueManager;
   const [state, setState] = useState({ loading: true, error: "", rows: [] });
 
+  const navigate = useNavigate();
+  const menuRef = useRef(null);
+  const menuButtonRef = useRef(null); // for outside-click
+  const menuId = useId();
+  const uid = useId();
+  const priceMinId = `${uid}-price-min`;
+  const priceMaxId = `${uid}-price-max`;
+
   useEffect(() => {
     async function run() {
       if (!isAuthed || !profile?.name) return;
@@ -38,183 +45,173 @@ export default function NavbarWithSearch() {
     run();
   }, [isAuthed, profile?.name]);
 
+  // Outside click + Esc to close menu (fixes seEffect typo and stray duplicate code)
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDocClick = (e) => {
+      const menuEl = menuRef.current;
+      const btnEl = menuButtonRef.current;
+      if (!menuEl || !btnEl) return;
+      const clickedInside = menuEl.contains(e.target) || btnEl.contains(e.target);
+      if (!clickedInside) setMenuOpen(false);
+    };
+    const onEsc = (e) => e.key === "Escape" && setMenuOpen(false);
+
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [menuOpen]);
+
+  const handleLogout = async () => {
+    try {
+      await logout?.();
+    } finally {
+      setMenuOpen(false);
+      navigate("/");
+    }
+  };
+
+  const baseBtn =
+    "inline-flex items-center justify-center font-medium rounded-[var(--radius-md)] transition shadow-sm px-5 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[color:var(--color-accent-500)] active:scale-[0.98]";
+  const brandBtn = `${baseBtn} bg-[color:var(--color-brand-500)] text-[color:var(--color-muted)] hover:bg-[color:var(--color-accent-700)]`;
+  const outlineBrandBtn = `${baseBtn} border border-[color:var(--color-brand-500)] text-[color:var(--color-brand-500)] hover:bg-[color:var(--color-accent-50)]`;
+  const neutralBtn = `${baseBtn} border border-black/10 text-gray-700 hover:bg-black/[.03]`;
+  const dangerBtn = `${baseBtn} bg-red-600 text-white hover:bg-red-700`;
+
+  const unauthedMenu = (
+    <div className="space-y-2">
+      <Link to="/venues" onClick={() => setMenuOpen(false)} className={outlineBrandBtn}>
+        View Venues
+      </Link>
+      <Link to="/login" onClick={() => setMenuOpen(false)} className={brandBtn}>
+        Log In
+      </Link>
+      <Link
+        to="/register"
+        onClick={() => setMenuOpen(false)}
+        className="inline-flex items-center justify-center font-medium rounded-[var(--radius-md)] transition shadow-sm px-5 py-2 text-sm bg-[color:var(--color-success-500)] text-white hover:bg-[color:var(--color-success-600)] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[color:var(--color-success-500)] active:scale-[0.98]"
+      >
+        Register
+      </Link>
+    </div>
+  );
+
+  const authedMenu = (
+    <div className="space-y-2">
+      <Link to="/venues" onClick={() => setMenuOpen(false)} className={outlineBrandBtn}>
+        Venues
+      </Link>
+      <Link
+        to={profile?.name ? `/profiles/${encodeURIComponent(profile.name)}` : "/profile"}
+        onClick={() => setMenuOpen(false)}
+        className={neutralBtn}
+      >
+        My Profile
+      </Link>
+      <button type="button" onClick={handleLogout} className={dangerBtn}>
+        Log Out
+      </button>
+    </div>
+  );
+
   return (
-    <nav className="fixed top-0 left-0 z-50 w-full bg-white border-b border-black/5">
-      <div className="flex items-center justify-between px-4 py-3 md:px-8">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 shrink-0">
+    <nav
+      className="
+    sticky top-0 z-50 w-full h-16
+    bg-[--color-surface] border-b border-[--color-ring]
+    flex items-center px-4 shadow-sm
+    bg-[linear-gradient(rgba(255,255,255,0.25),rgba(255,255,255,0.25)),url('/images/Clouds_navbar2.png')]
+    bg-no-repeat bg-cover bg-cente4
+  "
+      data-theme="light"
+    >
+      {/* Left: Logo */}
+      <div className="shrink-0 transform -translate-x-4">
+        <a href="/" className="block">
           <img
-            src="/images/logo.light.png"
-            alt="Holidaze"
-            className="h-10 w-10 rounded-full object-cover dark:hidden"
+            src="/images/holidaze_navbar.png"
+            alt="Holidaze Logo"
+            className="h-16 object-contain"
           />
-          <img
-            src="/images/logo.dark.png"
-            alt="Holidaze"
-            className="h-20 w-20 rounded-full object-cover hidden dark:inline"
-          />
-        </Link>
-
-        {/* Center: SearchBarDropdown */}
-        <div className="flex-1 max-w-3xl px-4">
-          <SearchBarDropdown
-            selected={tempDateRange}
-            onChange={setTempDateRange}
-            onApply={setSelectedDateRange}
-            onPriceRangeChange={setPriceRange}
-            onMetaFilterChange={setMetaFilters}
-            onLocationChange={setSelectedPlace}
-            selectedPlace={selectedPlace}
-            selectedDateRange={selectedDateRange}
-            minDate={new Date()}
-          />
-        </div>
-
-        {/* Hamburger Toggle */}
-        <div className="shrink-0">
-          <button
-            type="button"
-            onClick={() => setMenuOpen((prev) => !prev)}
-            className="inline-flex items-center justify-center w-10 h-10 rounded-lg transition focus-visible:ring-2 focus-visible:ring-offset-2 ring-[color:var(--color-brand-500)] border border-[color:var(--color-brand-500)] text-[color:var(--color-brand-500)] hover:bg-[color:var(--color-accent-50)] active:scale-[0.98]"
-            aria-label="Toggle menu"
-          >
-            {menuOpen ? (
-              // X Icon
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-6 h-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              // Hamburger Icon
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-6 h-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            )}
-          </button>
-        </div>
+        </a>
       </div>
 
-      {/* Slide-in menu */}
-      {menuOpen && (
-        <>
-          {/* Overlay */}
+      {/* Center: SearchBar */}
+      <div className="flex-1 max-w-3xl px-4">
+        <SearchBarDropdown
+          selected={tempDateRange}
+          onChange={setTempDateRange}
+          onApply={setSelectedDateRange}
+          onPriceRangeChange={setPriceRange}
+          onMetaFilterChange={setMetaFilters}
+          onLocationChange={setSelectedPlace}
+          selectedPlace={selectedPlace}
+          selectedDateRange={selectedDateRange}
+          minDate={new Date()}
+        />
+      </div>
+
+      {/* Right: Hamburger Toggle */}
+      <div className="relative shrink-0 flex items-center">
+        <button
+          type="button"
+          ref={menuButtonRef}
+          onClick={() => setMenuOpen((prev) => !prev)}
+          className="inline-flex items-center justify-center font-medium w-10 h-10 p-0 rounded-[var(--radius-md)] transition shadow-sm text-sm text-[color:var(--color-brand-700)] bg-[color:var(--color-brand-50)] border border-[color:var(--color-brand-500)] hover:bg-[color:var(--color-brand-100)] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[color:var(--color-accent-500)] active:scale-[0.98]"
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
+          aria-controls={menuId}
+        >
+          {menuOpen ? (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-6 h-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-6 h-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          )}
+        </button>
+
+        {menuOpen && (
           <div
-            className="fixed inset-0 bg-black/40 z-40"
-            onClick={() => setMenuOpen(false)}
-            aria-hidden="true"
-          />
-
-          {/* Drawer panel */}
-          <aside
-            className="fixed right-0 top-0 z-50 w-[min(90vw,360px)] h-full bg-white shadow-xl p-6 border-l border-black/10 flex flex-col gap-6"
-            role="dialog"
-            aria-modal="true"
+            id={menuId}
+            ref={menuRef}
+            role="menu"
+            aria-label="Main menu"
+            className="absolute right-0 top-[calc(100%+8px)] w-64 rounded-xl border border-[--color-ring] bg-[--color-surface] shadow-md p-3"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-base font-semibold text-gray-800">Menu</span>
-              {/* Close button inside drawer */}
-              <button
-                onClick={() => setMenuOpen(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md transition focus-visible:ring-2 focus-visible:ring-offset-2 ring-[color:var(--color-brand-500)] bg-[color:var(--color-brand-500)] text-[color:var(--color-muted)] hover:bg-[color:var(--color-error-700)] active:scale-[0.98]"
-                aria-label="Close menu"
-              >
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">
-                  <path d="M6 6l12 12M6 18L18 6" stroke="currentColor" strokeWidth="2" />
-                </svg>
-              </button>
-            </div>
-
-            <ul className="flex flex-col gap-3 text-sm">
-              {!loggedIn ? (
-                <>
-                  <li>
-                    <Link
-                      to="/login"
-                      onClick={() => setMenuOpen(false)}
-                      className="block rounded-md px-3 py-2 text-center ring-[color:var(--color-accent-500)] bg-[color:var(--color-accent-500)] text-[color:var(--color-text)] hover:bg-[color:var(--color-accent-700)] active:scale-[0.98]"
-                    >
-                      Log In
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      to="/register"
-                      onClick={() => setMenuOpen(false)}
-                      className="block rounded-md px-3 py-2 text-center ring-[color:var(--color-brand-500)] bg-[color:var(--color-brand-500)] text-[color:var(--color-text)] hover:bg-[color:var(--color-brand-700)] active:scale-[0.98]"
-                    >
-                      Register
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      to="/venues"
-                      onClick={() => setMenuOpen(false)}
-                      className="block rounded-md px-3 py-2 text-center ring-[color:var(--color-accent-500)] border border-[color:var(--color-accent-500)] text-[color:var(--color-accent-500)] hover:bg-[color:var(--color-accent-50)] active:scale-[0.98]"
-                    >
-                      Explore Venues
-                    </Link>
-                  </li>
-                </>
-              ) : (
-                <>
-                  <li>
-                    <Link
-                      to="/profile"
-                      onClick={() => setMenuOpen(false)}
-                      className="block rounded-md px-3 py-2 text-center ring-[color:var(--color-brand-700)] bg-[color:var(--color-brand-500)] text-[color:var(--color-muted)] hover:bg-[color:var(--color-brand-700)] active:scale-[0.98]"
-                    >
-                      My Profile
-                    </Link>
-                  </li>
-
-                  {isManager && (
-                    <li>
-                      <Link
-                        to="/venues/create"
-                        onClick={() => setMenuOpen(false)}
-                        className="block rounded-md px-3 py-2 text-center ring-[color:var(--color-brand-700)] bg-[color:var(--color-accent-300)] text-[color:var(--color-text)] hover:bg-[color:var(--color-brand-700)] active:scale-[0.98]"
-                      >
-                        Create Venue
-                      </Link>
-                    </li>
-                  )}
-
-                  {/* Logout pushed down and styled as danger */}
-                  <li className="mt-6">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        logout();
-                        setMenuOpen(false);
-                      }}
-                      className="w-full rounded-md px-3 py-2 text-center ring-[color:var(--color-error-500)] bg-[color:var(--color-error-500)] text-[color:var(--color-text)] hover:bg-[color:var(--color-error-800)] active:scale-[0.98]"
-                    >
-                      Logout
-                    </button>
-                  </li>
-                </>
-              )}
-            </ul>
-
-            <div className="mt-auto pt-4 text-xs text-gray-400">
-              © {new Date().getFullYear()} Holidaze
-            </div>
-          </aside>
-        </>
-      )}
+            {loggedIn && (
+              <div className="px-2 pb-2 mb-2 border-b border-gray-200 text-sm text-gray-600">
+                Signed in as <span className="font-medium">{profile?.name || user?.email}</span>
+              </div>
+            )}
+            {loggedIn ? authedMenu : unauthedMenu}
+          </div>
+        )}
+      </div>
     </nav>
   );
 }

@@ -1,10 +1,16 @@
 // src/api/venues.js
-import { httpDelete, httpGet, httpPost, httpPut } from "./http.js";
+import { installInterceptors } from "./http";
 
-export function listVenues(
-  { page = 1, limit = 25, q, sort, order, withOwner = false, withBookings = true, signal } = {},
-  auth,
-) {
+// List venues (no client cache)
+export async function listVenues({
+  page = 1,
+  limit = 25,
+  q,
+  sort,
+  order,
+  withOwner = false,
+  signal,
+} = {}) {
   const params = {
     page,
     limit,
@@ -12,43 +18,48 @@ export function listVenues(
     sort,
     sortOrder: order,
     _owner: withOwner || undefined,
-    _bookings: withBookings ? true : undefined, // ✅ KEY FIX
   };
-
-  return httpGet("/holidaze/venues", { params, signal, ...auth });
+  const res = await installInterceptors("/holidaze/venues", { params, signal });
+  return res?.data?.data ?? res?.data;
 }
 
-// Single venue — ALWAYS include bookings + owner on details page
-export function getVenue(id, { withBookings = true, withOwner = true } = {}, auth) {
+export async function getMyVenues(
+  name,
+  { page = 1, limit = 25, sort, order, withBookings = false, withOwner = true, signal } = {},
+) {
+  const params = {
+    page,
+    limit,
+    sort,
+    sortOrder: order,
+    _bookings: withBookings || undefined,
+    _owner: withOwner || undefined,
+  };
+
+  const res = await installInterceptors(`/holidaze/profiles/${encodeURIComponent(name)}/venues`, {
+    params,
+    signal,
+  });
+
+  return res?.data?.data ?? res?.data;
+}
+// Single venue (no client cache)
+export async function getVenue(id, { withBookings = true, withOwner = true } = {}) {
   const params = {
     _bookings: withBookings || undefined,
     _owner: withOwner || undefined,
   };
-  return httpGet(`/holidaze/venues/${id}`, { params, ...auth });
+  const res = await installInterceptors(`/holidaze/venues/${encodeURIComponent(id)}`, { params });
+  return res?.data?.data ?? res?.data;
 }
 
+// Create / Update / Delete
 export function createVenue(payload, auth) {
-  return httpPost("/holidaze/venues", payload, auth);
+  return installInterceptors("/holidaze/venues", payload, auth);
 }
 export function updateVenue(id, payload, auth) {
-  return httpPut(`/holidaze/venues/${id}`, payload, auth);
+  return installInterceptors(`/holidaze/venues/${encodeURIComponent(id)}`, payload, auth);
 }
-export function deleteVenue(id, auth) {
-  return httpDelete(`/holidaze/venues/${id}`, auth);
-}
-
-// Manager overview: your venues incl. bookings
-export function getMyVenues(profileName, { withBookings = true } = {}, auth) {
-  const params = { _bookings: withBookings || undefined };
-  return httpGet(`/holidaze/profiles/${profileName}/venues`, { params, ...auth });
-}
-
-// Search venues by name (wrapper for /holidaze/venues?q=)
-export function searchVenues({ q, page = 1, limit = 25, signal } = {}, auth) {
-  const params = {
-    q: q?.trim() || undefined, // Noroff API does the name matching
-    page,
-    limit,
-  };
-  return httpGet("/holidaze/venues", { params, signal, ...auth });
+export function deleteVenue(id, config) {
+  return installInterceptors(`/holidaze/venues/${encodeURIComponent(id)}`, config);
 }

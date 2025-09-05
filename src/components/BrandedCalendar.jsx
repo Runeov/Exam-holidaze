@@ -1,86 +1,257 @@
-import { useMemo } from "react";
+/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
+/** biome-ignore-all lint/a11y/useButtonType: <explanation> */
+import { useEffect, useRef, useState } from "react";
 import { DayPicker } from "react-day-picker";
-import "react-day-picker/dist/style.css";
-import { bookingsToDisabledRanges, hasBookingConflict, toUtcMidnight } from "../utils/dates";
 
-/**
- * BrandedCalendar — flexible, responsive calendar with booking constraints.
- */
-export default function BrandedCalendar({
-  mode = "range", // 'single' or 'range'
+function fmt(d) {
+  if (!d) return "";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+export default function CalendarDropdown({
   selected,
-  onSelect,
-  bookings = [],
-  numberOfMonths = 2,
+  onChange,
+  onApply,
+  onPriceRangeChange,
+  onMetaFilterChange,
+  onLocationChange,
   minDate,
-  maxDate,
-  weekStartsOn = 1,
-  captionLayout = "buttons",
-  showOutsideDays = true,
-  onConflict, // Optional callback
-  label = "Select your travel dates",
-  showHelperText = true,
+  disabled,
 }) {
-  const today = useMemo(() => toUtcMidnight(new Date()), []);
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("dates");
+  const popoverRef = useRef(null);
 
-  const disabled = useMemo(() => {
-    const ranges = bookingsToDisabledRanges(bookings);
+  const [priceRange, setPriceRange] = useState({ min: 0, max: 9999 });
+  const [metaFilters, setMetaFilters] = useState({
+    wifi: false,
+    parking: false,
+    breakfast: false,
+    pets: false,
+  });
+  const [locationInput, setLocationInput] = useState("");
 
-    if (minDate) ranges.push({ before: toUtcMidnight(minDate) });
-    else ranges.push({ before: today });
+  const label =
+    selected?.from && selected?.to
+      ? `${fmt(selected.from)} – ${fmt(selected.to)}`
+      : selected?.from
+        ? fmt(selected.from)
+        : "Dates";
 
-    if (maxDate) ranges.push({ after: toUtcMidnight(maxDate) });
+  useEffect(() => {
+    if (!isOpen) return;
+    const onDown = (e) => {
+      if (!popoverRef.current) return;
+      if (!popoverRef.current.contains(e.target)) setIsOpen(false);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") setIsOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [isOpen]);
 
-    return ranges;
-  }, [bookings, minDate, maxDate, today]);
-
-  const handleSelect = (value) => {
-    if (mode === "range" && value?.from && value?.to) {
-      const conflict = hasBookingConflict(bookings, value.from, value.to);
-      if (conflict && typeof onConflict === "function") {
-        return onConflict(value);
-      }
+  const handleApply = () => {
+    if (selected?.from && selected?.to) {
+      onApply?.(selected);
+      setIsOpen(false);
     }
-    onSelect?.(value);
   };
 
-  return (
-    <div className="w-full max-w-4xl rounded-3xl bg-surface p-4 shadow-md border border-black/5">
-      {label && <div className="text-center text-sm font-medium text-text mb-4">{label}</div>}
+  const handleMinPriceChange = (e) => {
+    const updated = { ...priceRange, min: Number(e.target.value) };
+    setPriceRange(updated);
+    onPriceRangeChange?.(updated);
+  };
 
-      {/* 🔽 Scrollable container to keep calendar inside viewport */}
-      <div className="overflow-y-auto max-h-[75vh]">
-        <DayPicker
-          mode={mode}
-          selected={selected}
-          onSelect={handleSelect}
-          disabled={disabled}
-          numberOfMonths={numberOfMonths}
-          pagedNavigation
-          weekStartsOn={weekStartsOn}
-          captionLayout={captionLayout}
-          showOutsideDays={showOutsideDays}
-          classNames={{
-            months: "grid gap-6 md:grid-cols-2",
-            caption: "flex justify-between items-center px-2 mb-2 text-text font-medium",
-            nav_button:
-              "rounded-full p-2 text-text hover:bg-black/[.06] focus:outline-none focus-visible:ring-2 ring-brand-500",
-            head_row: "grid grid-cols-7 text-xs text-center text-text-muted",
-            head_cell: "py-1",
-            row: "grid grid-cols-7 gap-1.5",
-            cell: "relative w-10 h-10 sm:w-11 sm:h-11",
-            day: "w-full h-full rounded-full grid place-items-center text-sm text-text hover:bg-black/[.06] focus:outline-none focus-visible:ring-2 ring-brand-500",
-            day_selected: "bg-[--color-brand-500] text-white",
-            day_range_middle: "bg-brand-50 text-text rounded-md",
-            day_disabled: "text-text-muted/40 cursor-not-allowed",
-          }}
-        />
+  const handleMaxPriceChange = (e) => {
+    const updated = { ...priceRange, max: Number(e.target.value) };
+    setPriceRange(updated);
+    onPriceRangeChange?.(updated);
+  };
+
+  const toggleMeta = (key) => {
+    const updated = { ...metaFilters, [key]: !metaFilters[key] };
+    setMetaFilters(updated);
+    onMetaFilterChange?.(updated);
+  };
+
+  const handleLocationApply = () => {
+    if (locationInput.trim()) {
+      onLocationChange?.(locationInput.trim());
+      setIsOpen(false);
+    }
+  };
+
+  const CTA_PRIMARY =
+    "inline-flex items-center justify-center rounded-full border px-5 py-2 text-sm font-semibold transition " +
+    "border-[var(--color-brand-600)] bg-[var(--color-brand-600)] text-white " +
+    "hover:bg-[var(--color-brand-700)] hover:shadow-md active:scale-95 " +
+    "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand-500)] " +
+    "focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed";
+
+  return (
+    <div className="space-y-2 relative">
+      <span className="block text-sm font-medium">Choose filters</span>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          aria-expanded={isOpen}
+          aria-controls="calendar-dropdown"
+          onClick={() => setIsOpen((p) => !p)}
+          className="rounded-full border border-black/10 bg-white px-3 py-2 text-sm hover:bg-black/[.03]
+                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600
+                     focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+        >
+          {label}
+        </button>
       </div>
 
-      {showHelperText && (
-        <p className="text-xs text-text-muted mt-3 text-center">
-          Select {mode === "range" ? "a start and end date" : "a date"}. Booked dates are disabled.
-        </p>
+      {isOpen && (
+        <div
+          id="calendar-dropdown"
+          ref={popoverRef}
+          className="absolute z-20 mt-2 w-full rounded-xl border border-black/10 bg-white p-3 shadow-md"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="rounded-2xl border p-3 bg-white space-y-4">
+            <div className="flex border-b border-gray-200 text-sm font-medium">
+              {["dates", "price", "filters", "location"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`capitalize px-4 py-2 -mb-px border-b-2 ${
+                    activeTab === tab
+                      ? "border-brand-600 text-brand-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {activeTab === "dates" && (
+              <div>
+                <DayPicker
+                  mode="range"
+                  selected={selected}
+                  onSelect={onChange}
+                  fromDate={minDate}
+                  numberOfMonths={2}
+                  showOutsideDays
+                  disabled={disabled}
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Select a start and end date. Booked dates are disabled.
+                </p>
+                <div className="mt-3 flex justify-center gap-2">
+                  <button
+                    type="button"
+                    className={CTA_PRIMARY}
+                    onClick={handleApply}
+                    disabled={!selected?.from || !selected?.to}
+                  >
+                    Submit
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "price" && (
+              <div className="space-y-4">
+                <div>
+                  <span className="block text-sm font-medium mb-1">Price Range ($)</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <label htmlFor="min-price" className="text-sm text-gray-700 w-16">
+                        Min
+                      </label>
+                      <input
+                        id="min-price"
+                        type="range"
+                        min={0}
+                        max={9999}
+                        value={priceRange.min}
+                        onChange={handleMinPriceChange}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                      />
+                      <span className="text-sm w-20 text-gray-500">${priceRange.min}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <label htmlFor="max-price" className="text-sm text-gray-700 w-16">
+                        Max
+                      </label>
+                      <input
+                        id="max-price"
+                        type="range"
+                        min={0}
+                        max={9999}
+                        value={priceRange.max}
+                        onChange={handleMaxPriceChange}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                      />
+                      <span className="text-sm w-20 text-gray-500">${priceRange.max}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "filters" && (
+              <div className="space-y-2">
+                <span className="block text-sm font-medium mb-1">Amenities</span>
+                <div className="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                  {Object.keys(metaFilters).map((key) => (
+                    <label key={key} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={metaFilters[key]}
+                        onChange={() => toggleMeta(key)}
+                      />
+                      {key.charAt(0).toUpperCase() + key.slice(1)}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === "location" && (
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="location-input" className="block text-sm font-medium mb-1">
+                    Location
+                  </label>
+                  <input
+                    id="location-input"
+                    type="text"
+                    value={locationInput}
+                    onChange={(e) => setLocationInput(e.target.value)}
+                    placeholder="Search by city, country, zip..."
+                    className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
+                  />
+                </div>
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    className={CTA_PRIMARY}
+                    onClick={handleLocationApply}
+                    disabled={!locationInput.trim()}
+                  >
+                    Submit
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
