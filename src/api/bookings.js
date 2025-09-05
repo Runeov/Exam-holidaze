@@ -1,7 +1,7 @@
 // src/api/bookings.js
 // Consistent with the axios-based http helpers and explicit auth passthrough.
 
-import { httpDelete, httpGet, httpPost, httpPut } from "./http.js";
+import { http } from "./http.js";
 
 /* ----------------------------- date utilities ----------------------------- */
 
@@ -97,13 +97,13 @@ export async function createBooking(
 
   // Small retry for transient 429/5xx (optional safety net)
   try {
-    const res = await httpPost("/holidaze/bookings", body, auth);
+    const res = await http.post("/holidaze/bookings", body, auth);
     return res?.data?.data ?? res?.data;
   } catch (err) {
     const code = err?.response?.status;
     if (code && (code === 429 || code >= 500)) {
       // one quick retry
-      const res = await httpPost("/holidaze/bookings", body, auth);
+      const res = await http.post("/holidaze/bookings", body, auth);
       return res?.data?.data ?? res?.data;
     }
     const apiMsg = err?.response?.data?.errors?.[0]?.message;
@@ -157,7 +157,11 @@ export async function updateBooking(bookingId, changes = {}, { auth } = {}) {
   if (typeof changes.guests === "number") payload.guests = Number(changes.guests);
 
   try {
-    const res = await httpPut(`/holidaze/bookings/${encodeURIComponent(bookingId)}`, payload, auth);
+    const res = await http.put(
+      `/holidaze/bookings/${encodeURIComponent(bookingId)}`,
+      payload,
+      auth,
+    );
     return res?.data?.data ?? res?.data;
   } catch (err) {
     const apiMsg = err?.response?.data?.errors?.[0]?.message;
