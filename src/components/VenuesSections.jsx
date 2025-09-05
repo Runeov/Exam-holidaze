@@ -122,7 +122,7 @@ const VenuesSections = forwardRef(function VenuesSections(
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm text-white font-semibold line-clamp-1">
+                    <p className="text-sm text-muted font-semibold line-clamp-1">
                       {v.location?.city}, {v.location?.country}
                     </p>
                     <p className="text-xs text-text-muted line-clamp-2 mb-1">{v.name}</p>

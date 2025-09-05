@@ -14,7 +14,7 @@ export default function CalendarDropdown({
   onApply,
   onPriceRangeChange,
   onMetaFilterChange,
-  onLocationChange, // ✅ NEW
+  onLocationChange,
   minDate,
   disabled,
 }) {
@@ -34,7 +34,7 @@ export default function CalendarDropdown({
     pets: false,
   });
 
-  const [locationInput, setLocationInput] = useState(""); // ✅
+  const [locationInput, setLocationInput] = useState("");
 
   const label =
     selected?.from && selected?.to
@@ -94,6 +94,17 @@ export default function CalendarDropdown({
     }
   };
 
+  const CTA_PRIMARY =
+    "inline-flex items-center justify-center rounded-full border px-5 py-2 text-sm font-semibold transition " +
+    "border-[color:var(--color-brand-600)] bg-[color:var(--color-brand-600)] text-white " +
+    "hover:bg-[color:var(--color-brand-700)] hover:shadow-md active:scale-95 " +
+    "focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-brand-500)] focus-visible:ring-offset-2 focus-visible:ring-offset-white";
+
+  const CTA_SECONDARY =
+    "inline-flex items-center justify-center rounded-full border px-5 py-2 text-sm font-medium transition " +
+    "border-black/10 bg-white text-black hover:bg-black/[.03] active:scale-95 " +
+    "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white";
+
   return (
     <div className="space-y-2 relative">
       <span className="block text-sm font-medium">Choose filters</span>
@@ -121,7 +132,6 @@ export default function CalendarDropdown({
           aria-modal="true"
         >
           <div className="rounded-2xl border p-3 bg-white space-y-4">
-            {/* 🔘 Tabs */}
             <div className="flex border-b border-gray-200 text-sm font-medium">
               {["dates", "price", "filters", "location"].map((tab) => (
                 <button
@@ -138,7 +148,6 @@ export default function CalendarDropdown({
               ))}
             </div>
 
-            {/* 📅 Dates Tab */}
             {activeTab === "dates" && (
               <div>
                 <DayPicker
@@ -153,12 +162,10 @@ export default function CalendarDropdown({
                 <p className="text-xs text-gray-500 mt-2">
                   Select a start and end date. Booked dates are disabled.
                 </p>
-                <div className="mt-3 flex justify-end gap-2">
+                <div className="mt-3 flex justify-center gap-2">
                   <button
                     type="button"
-                    className="rounded-lg border border-black/10 px-3 py-2 hover:bg-black/[.03]
-                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600
-                               focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                    className={CTA_PRIMARY}
                     onClick={handleApply}
                     disabled={!selected?.from || !selected?.to}
                   >
@@ -168,13 +175,11 @@ export default function CalendarDropdown({
               </div>
             )}
 
-            {/* 💰 Price Tab */}
             {activeTab === "price" && (
               <div className="space-y-4">
                 <div>
                   <span className="block text-sm font-medium mb-1">Price Range ($)</span>
                   <div className="space-y-2">
-                    {/* Min Price */}
                     <div className="flex items-center gap-2">
                       <label htmlFor="min-price" className="text-sm text-gray-700 w-16">
                         Min
@@ -191,7 +196,6 @@ export default function CalendarDropdown({
                       <span className="text-sm w-20 text-gray-500">${priceRange.min}</span>
                     </div>
 
-                    {/* Max Price */}
                     <div className="flex items-center gap-2">
                       <label htmlFor="max-price" className="text-sm text-gray-700 w-16">
                         Max
@@ -212,7 +216,6 @@ export default function CalendarDropdown({
               </div>
             )}
 
-            {/* 🧩 Filters Tab */}
             {activeTab === "filters" && (
               <div className="space-y-2">
                 <span className="block text-sm font-medium mb-1">Amenities</span>
@@ -231,7 +234,6 @@ export default function CalendarDropdown({
               </div>
             )}
 
-            {/* 📍 Location Tab */}
             {activeTab === "location" && (
               <div className="space-y-4">
                 <div>
@@ -247,12 +249,10 @@ export default function CalendarDropdown({
                     className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
                   />
                 </div>
-                <div className="flex justify-end">
+                <div className="flex justify-center">
                   <button
                     type="button"
-                    className="rounded-lg border border-black/10 px-3 py-2 text-sm hover:bg-black/[.03]
-                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600
-                               focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                    className={CTA_PRIMARY}
                     onClick={handleLocationApply}
                     disabled={!locationInput.trim()}
                   >

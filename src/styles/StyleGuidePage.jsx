@@ -1,9 +1,8 @@
 import { Buttons } from "./Buttons";
 import { Colors } from "./Colors";
-import { TextBoxes } from "./TextBoxes"; // ⬅️ new
+import { Calendar } from "./components/Calendar";
+import { TextBoxes } from "./components/TextBoxes";
 import { Typography } from "./Typography";
-
-// import { ThemePreviews } from "./ThemePreviews";
 
 export default function StyleGuidePage() {
   return (
@@ -16,7 +15,9 @@ export default function StyleGuidePage() {
       <Colors />
       <Typography />
       <Buttons />
-      <TextBoxes /> {/* ⬅️ new section */}
+      <TextBoxes />
+      <Calendar />
+      {/* ⬅️ new section */}
       {/* Optional: Only if dark theme is supported */}
       {/* <ThemePreviews /> */}
     </div>

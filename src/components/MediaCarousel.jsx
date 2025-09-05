@@ -105,30 +105,43 @@ export default function MediaCarousel({
       >
         {shown.map((m, i) => (
           <div key={i} className="shrink-0 snap-start first:pl-0 last:pr-0">
-            <div className="relative aspect-[16/10] w-[min(90vw,860px)] rounded-xl overflow-hidden bg-muted">
+            <div className="relative aspect-[16/10] w-[min(90vw,860px)] rounded-xl overflow-hidden bg-muted translate-x-10 md:translate-x-16 lg:translate-x-22">
               <SmartImage
                 url={m.url}
                 alt={m.alt || `Image ${i + 1}`}
-                className="h-full w-full object-cover object-center"
+                className="h-full w-full object-cover object-center sm:object-[65%] md:object-[70%] lg:object-[75%]"
                 eager={i < 2}
                 decoding="async"
               />
 
               {(m.name || m.location) && (
                 <>
-                  {/* Location – top center */}
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0" />
+
                   {m.location && (
-                    <p className="absolute top-4 left-1/2 -translate-x-1/2 z-10 text-lg md:text-xl font-semibold tracking-tight text-white leading-snug bg-black/50 px-4 py-2 rounded-full backdrop-blur-md">
-                      {m.location}
-                    </p>
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+                      <p className="px-4 py-2 rounded-full text-white text-base md:text-lg font-semibold tracking-tight bg-black/35 backdrop-blur-md ring-1 ring-white/20 shadow-lg">
+                        {m.location}
+                      </p>
+                      {m.subLocation && (
+                        <p className="mt-1 text-center text-white/80 text-xs md:text-sm font-medium bg-black/25 inline-block px-3 py-1 rounded-full backdrop-blur-md ring-1 ring-white/10">
+                          {m.subLocation}
+                        </p>
+                      )}
+                    </div>
                   )}
 
-                  {/* Show More Button – bottom center */}
                   {m.location && (
                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 pointer-events-auto">
                       <button
                         type="button"
-                        className="inline-flex items-center justify-center font-medium rounded-[var(--radius-md)] transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 ring-[--color-accent-500] ring-offset-2 text-lg px-5 py-3 ring-[color:var(--color-brand-500)] bg-[color:var(--color-brand-300)] text-[color:var(--color-muted)] hover:bg-[color:var(--color-brand-700)] active:scale-[0.98]"
+                        className="inline-flex items-center justify-center gap-2 px-6 py-3 text-base md:text-lg font-semibold 
+             rounded-full shadow-lg transition-all duration-300 ease-out
+             bg-[color:var(--color-brand-600)] text-white border border-white/40
+             hover:bg-[color:var(--color-brand-700)] hover:scale-105 hover:shadow-xl hover:border-white/60
+             active:scale-95 focus:outline-none focus-visible:ring-4 
+             focus-visible:ring-[color:var(--color-brand-500)] focus-visible:ring-offset-2 
+             focus-visible:ring-offset-black/20 animate-pulse"
                         onClick={() => {
                           console.debug("[MediaCarousel] Show more clicked", {
                             location: m.location,
@@ -137,14 +150,13 @@ export default function MediaCarousel({
                         }}
                         aria-label={`Show more about ${m.location}`}
                       >
-                        Show more
+                        Show more ✨
                       </button>
                     </div>
                   )}
 
-                  {/* Name – bottom right corner */}
                   {m.name && (
-                    <p className="absolute bottom-4 right-4 z-10 text-base md:text-lg font-semibold tracking-tight leading-snug text-white bg-black/50 px-3 py-1 rounded-md backdrop-blur-md pointer-events-none">
+                    <p className="absolute bottom-4 right-4 z-10 text-base md:text-lg font-semibold tracking-tight text-white bg-black/35 px-3 py-1 rounded-md backdrop-blur-md ring-1 ring-white/15 pointer-events-none">
                       {m.name}
                     </p>
                   )}
@@ -159,13 +171,14 @@ export default function MediaCarousel({
         )}
       </div>
 
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-between px-2">
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-between px-4">
         <button
           type="button"
           aria-label="Previous"
           aria-controls="hero-scroller"
           onClick={() => scrollBy(-400)}
-          className="pointer-events-auto rounded-full bg-surface/80 p-2 ring-1 ring-black/10 hover:bg-surface text-lg font-bold"
+          className="pointer-events-auto rounded-full bg-black/50 text-white w-12 h-12 flex items-center justify-center 
+               text-2xl font-bold shadow-lg hover:bg-black/70 active:scale-95 transition"
         >
           ‹
         </button>
@@ -174,7 +187,8 @@ export default function MediaCarousel({
           aria-label="Next"
           aria-controls="hero-scroller"
           onClick={() => scrollBy(400)}
-          className="pointer-events-auto rounded-full bg-surface/80 p-2 ring-1 ring-black/10 hover:bg-surface text-lg font-bold"
+          className="pointer-events-auto rounded-full bg-black/50 text-white w-12 h-12 flex items-center justify-center 
+               text-2xl font-bold shadow-lg hover:bg-black/70 active:scale-95 transition"
         >
           ›
         </button>

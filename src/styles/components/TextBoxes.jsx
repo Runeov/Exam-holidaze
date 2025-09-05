@@ -1,4 +1,4 @@
-// src/styles/TextBoxes.jsx
+/** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
 import React, { useId, useState } from "react";
 
 export function TextBoxes() {
@@ -95,7 +95,7 @@ export function TextBoxes() {
         </select>
       </div>
 
-      {/* Disabled state */}
+      {/* Disabled input */}
       <div>
         <label className={labelBase}>Disabled</label>
         <input
@@ -105,7 +105,7 @@ export function TextBoxes() {
         />
       </div>
 
-      {/* Copy-paste block */}
+      {/* Reusable class snippet */}
       <div className="mt-4 p-3 rounded-[var(--radius-md)] bg-[--color-muted]">
         <p className="text-sm text-[--color-text] font-semibold mb-1">Reusable classes</p>
         <pre className="text-xs text-[--color-text] whitespace-pre-wrap">

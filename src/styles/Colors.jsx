@@ -5,16 +5,30 @@ export function Colors() {
     ["--color-brand-300", "Brand 300"],
     ["--color-brand-500", "Brand 500"],
     ["--color-brand-700", "Brand 700"],
+    ["--color-brand-900", "Brand 900"], // NEW: #792fe1
+
     ["--color-accent-50", "Accent 50"],
     ["--color-accent-100", "Accent 100"],
     ["--color-accent-300", "Accent 300"],
     ["--color-accent-500", "Accent 500"],
     ["--color-accent-700", "Accent 700"],
+    ["--color-accent-900", "Accent 900"], // NEW: #fe5f8e
+
+    ["--color-star", "Star Yellow"], // NEW: #ffca4c
+    ["--color-glow-blue", "Glow Blue"], // NEW: #14b2c4
+    ["--color-energy", "Energy Magenta"], // NEW: #d745e3
+    ["--color-midnight", "Midnight"], // NEW: #1e4179
+
     ["--color-success-500", "Success 500"],
     ["--color-error-500", "Error 500"],
     ["--color-muted", "Muted"],
     ["--color-text", "Text"],
     ["--color-text-muted", "Text Muted"],
+
+    // 🌊 Holidaze Brand Colors
+    ["--color-holidaze-navbar-500", "Holidaze Navbar"], // #0a1b4f
+    ["--color-holidaze-card-500", "Holidaze Card"], // #097e8e
+    ["--color-holidaze-background-500", "Holidaze Background"], // #027b6e
   ];
 
   return (
