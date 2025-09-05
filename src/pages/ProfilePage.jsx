@@ -6,8 +6,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { getProfile } from "../api/profiles";
 import { useAuth } from "../context/AuthContext";
 
-// ⭐ Robust asset URL (dev & prod safe)
-const stars = new URL("../assets/images/Stars_big.png", import.meta.url).href;
+// ⭐
+//const stars = new URL("../imagesStars_big", import.meta.url).href;
 
 // ——— Helpers (additive, local)
 function safeDate(dateLike) {

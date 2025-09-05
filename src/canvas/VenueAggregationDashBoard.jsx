@@ -1,4 +1,5 @@
 // Path: src/components/VenueAggregationDashboard.jsx
+/** biome-ignore-all lint/a11y/useButtonType: <explanation> */
 // React + Tailwind only (approved). No unapproved libs. Uses IndexedDB for on-device DB sorting.
 import React, { useMemo, useState } from "react";
 

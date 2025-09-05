@@ -110,17 +110,20 @@ export default function LoginForm() {
         {passwordWarning && <p className="text-amber-600 text-xs mt-1">{showAlert}</p>}
       </div>
 
-      {showInlineError && (
-        <div className="alert-error" role="alert" aria-live="polite">
-          {formError || error}
-        </div>
-      )}
+      {showInlineError &&
+        +(
+          <div
+            className="rounded border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm"
+            role="alert"
+            aria-live="polite"
+          ></div>
+        )}
 
       <button
         type="submit"
         disabled={submitting}
         aria-label="Submit login form"
-        className="w-full rounded bg-green-600 text-white py-2 disabled:opacity-60"
+        className="w-full rounded bg-blue-600 text-white py-2 hover:bg-blue-700 disabled:opacity-60"
       >
         {submitting ? "Logging in…" : "Log in"}
       </button>

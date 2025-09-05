@@ -1,4 +1,6 @@
 // Path: src/VenueAnalyticsApp.jsx
+/** biome-ignore-all lint/a11y/noStaticElementInteractions: <explanation> */
+/** biome-ignore-all lint/a11y/useButtonType: <explanation> */
 // React + Tailwind only (approved). No external map libs. Simple tile map using Web Mercator.
 // Default export <VenueAnalyticsApp/> for drop-in preview.
 

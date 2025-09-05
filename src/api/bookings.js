@@ -1,7 +1,4 @@
-// src/api/bookings.js
-// Consistent with the axios-based http helpers and explicit auth passthrough.
-
-import { http } from "./http.js";
+import { installInterceptors } from "./http";
 
 /* ----------------------------- date utilities ----------------------------- */
 
@@ -39,7 +36,7 @@ export async function checkAvailability({ venueId, dateFrom, dateTo, auth }) {
   if (!venueId) throw new Error("checkAvailability: 'venueId' is required");
 
   // Fetch venue with bookings only (fast + enough data)
-  const res = await httpGet(`/holidaze/venues/${encodeURIComponent(venueId)}`, {
+  const res = await installInterceptors(`/holidaze/venues/${encodeURIComponent(venueId)}`, {
     params: { _bookings: true },
     ...auth,
   });
@@ -56,7 +53,7 @@ export async function checkAvailability({ venueId, dateFrom, dateTo, auth }) {
  */
 export async function getVenueBookings(venueId, { auth } = {}) {
   if (!venueId) throw new Error("getVenueBookings: 'venueId' is required");
-  const res = await httpGet(`/holidaze/venues/${encodeURIComponent(venueId)}`, {
+  const res = await installInterceptors(`/holidaze/venues/${encodeURIComponent(venueId)}`, {
     params: { _bookings: true },
     ...auth,
   });
@@ -97,13 +94,13 @@ export async function createBooking(
 
   // Small retry for transient 429/5xx (optional safety net)
   try {
-    const res = await http.post("/holidaze/bookings", body, auth);
+    const res = await installInterceptors("/holidaze/bookings", body, auth);
     return res?.data?.data ?? res?.data;
   } catch (err) {
     const code = err?.response?.status;
     if (code && (code === 429 || code >= 500)) {
       // one quick retry
-      const res = await http.post("/holidaze/bookings", body, auth);
+      const res = await installInterceptors("/holidaze/bookings", body, auth);
       return res?.data?.data ?? res?.data;
     }
     const apiMsg = err?.response?.data?.errors?.[0]?.message;
@@ -135,10 +132,13 @@ export async function getProfileBookings(
     _customer: includeCustomer || undefined,
     _owner: includeOwner || undefined,
   };
-  const res = await httpGet(`/holidaze/profiles/${encodeURIComponent(profileName)}/bookings`, {
-    params,
-    ...auth,
-  });
+  const res = await installInterceptors(
+    `/holidaze/profiles/${encodeURIComponent(profileName)}/bookings`,
+    {
+      params,
+      ...auth,
+    },
+  );
   return res?.data?.data ?? res?.data;
 }
 
@@ -157,7 +157,7 @@ export async function updateBooking(bookingId, changes = {}, { auth } = {}) {
   if (typeof changes.guests === "number") payload.guests = Number(changes.guests);
 
   try {
-    const res = await http.put(
+    const res = await installInterceptors(
       `/holidaze/bookings/${encodeURIComponent(bookingId)}`,
       payload,
       auth,
@@ -178,7 +178,10 @@ export async function updateBooking(bookingId, changes = {}, { auth } = {}) {
 export async function deleteBooking(bookingId, { auth } = {}) {
   if (!bookingId) throw new Error("deleteBooking: 'bookingId' is required");
   try {
-    const res = await httpDelete(`/holidaze/bookings/${encodeURIComponent(bookingId)}`, auth);
+    const res = await installInterceptors(
+      `/holidaze/bookings/${encodeURIComponent(bookingId)}`,
+      auth,
+    );
     // Noroff returns 204 No Content; axios wraps it with data = "".
     return res?.status === 204 || res?.data === "" || !!res;
   } catch (err) {

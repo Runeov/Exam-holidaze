@@ -34,6 +34,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      new URL(/* @vite-ignore */ "../assets/images/Stars_big.png", import.meta.url)
       <nav className="p-4 space-x-4 bg-gray-100">
         <Link to="/">Home</Link>
         {!user && (
@@ -55,7 +56,6 @@ export default function App() {
         )}
         {user && <Link to="/venues">Browse Venues</Link>}
       </nav>
-
       <Suspense fallback={<p className="p-4">Loading page…</p>}>
         <Routes>
           <Route path="/" element={<HomePage />} />

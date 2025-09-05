@@ -1,3 +1,4 @@
+// src/api/auth.js
 import { http } from "./http";
 
 const BASE = "/auth";
@@ -14,9 +15,11 @@ export async function login(email, password) {
 }
 
 export async function fetchApiKey(accessToken) {
-  // Works before interceptors see token
-  const { data } = await http.get(`${BASE}/create-api-key`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  return data.apiKey;
+  // Noroff expects POST for create key; be tolerant with response shape
+  const { data } = await http.post(
+    `${BASE}/create-api-key`,
+    { name: "Web Key" },
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  return data?.key ?? data?.data?.key ?? data?.apiKey ?? null;
 }

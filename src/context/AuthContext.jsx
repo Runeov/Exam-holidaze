@@ -11,14 +11,15 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    installInterceptors({
-      getToken: () => token,
-      getApiKey: () => apiKey,
-      onUnauthorized: () => logout(),
-    });
-  }, [token, apiKey, logout]);
+  // Logout first, so effects can safely reference it
+  const logout = useCallback(() => {
+    localStorage.removeItem("auth");
+    setUser(null);
+    setApiKey(null);
+    setToken(null);
+  }, []);
 
+  // Rehydrate once on mount
   useEffect(() => {
     const raw = localStorage.getItem("auth");
     if (raw) {
@@ -50,18 +51,22 @@ export function AuthProvider({ children }) {
     [doLogin],
   );
 
-  const logout = useCallback(() => {
-    localStorage.removeItem("auth");
-    setUser(null);
-    setApiKey(null);
-    setToken(null);
-  }, []);
+  // SINGLE interceptor installer with cleanup (no duplicates)
+  useEffect(() => {
+    const eject = installInterceptors({
+      getToken: () => token,
+      getApiKey: () => apiKey,
+      onUnauthorized: () => logout(),
+    });
+    return () => {
+      if (typeof eject === "function") eject();
+    };
+  }, [token, apiKey, logout]);
 
-  const isAuthed = !!user;
-  const value = useMemo(
-    () => ({ user, apiKey, token, isAuthed, loading, doRegister, doLogin, logout }),
-    [user, apiKey, token, loading, doRegister, doLogin, logout],
-  );
+  const value = useMemo(() => {
+    const isAuthed = Boolean(user && token && apiKey); // derive inside memo
+    return { user, apiKey, token, isAuthed, loading, doRegister, doLogin, logout };
+  }, [user, apiKey, token, loading, doRegister, doLogin, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

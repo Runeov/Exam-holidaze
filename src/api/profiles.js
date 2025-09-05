@@ -1,5 +1,5 @@
 // src/api/profiles.js
-import { httpGet, httpPut } from "./http.js";
+import { installInterceptors } from "./http";
 
 const isHttpUrl = (u) => !!u && /^https?:\/\//i.test(u);
 
@@ -17,7 +17,7 @@ export function getProfile(
     _owner: withOwner || undefined,
     _holidaze: withHolidaze || undefined,
   };
-  return httpGet(`/holidaze/profiles/${encodeURIComponent(name)}`, { params });
+  return installInterceptors(`/holidaze/profiles/${encodeURIComponent(name)}`, { params });
 }
 
 /**
@@ -68,6 +68,6 @@ export async function updateProfile(name, changes = {}) {
     throw new Error("Provide at least one field to update (bio, venueManager, avatar, banner).");
   }
 
-  const res = await httpPut(`/holidaze/profiles/${encodeURIComponent(name)}`, payload);
+  const res = await installInterceptors(`/holidaze/profiles/${encodeURIComponent(name)}`, payload);
   return res?.data?.data ?? res?.data; // return the profile object
 }
