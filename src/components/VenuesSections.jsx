@@ -95,17 +95,15 @@ const VenuesSections = forwardRef(function VenuesSections(
           return (
             <li
               key={venueKey}
-              className={`snap-start shrink-0 w-[16rem] md:w-[18rem] ${
-                unavailable ? "opacity-60 pointer-events-none" : ""
-              }`}
+              className={`snap-start shrink-0 w-[17rem] md:w-[19rem] transition transform hover:scale-[1.015] ${unavailable ? "opacity-50 pointer-events-none grayscale" : ""}`}
             >
               <Link
                 to={`/venues/${v.id ?? v._id ?? v.uuid ?? ""}`}
                 aria-label={`Open details for ${v.name || locLabel || "venue"}`}
                 className="block rounded-xl border border-black/10 bg-surface shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
               >
-                <div className="p-3 flex flex-col gap-3">
-                  <div className="rounded-lg overflow-hidden bg-muted h-36">
+                <div className="block rounded-xl border border-[var(--color-muted)] bg-white shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 transition">
+                  <div className="rounded-lg overflow-hidden bg-[var(--color-muted)] h-36">
                     {src ? (
                       <SmartImage
                         src={src}
@@ -126,27 +124,39 @@ const VenuesSections = forwardRef(function VenuesSections(
                       {v.location?.city}, {v.location?.country}
                     </p>
                     <p className="text-xs text-text-muted line-clamp-2 mb-1">{v.name}</p>
-                    <div className="flex justify-between items-center text-[11px] text-text">
+                    <div className="flex justify-between items-center text-[11px] text-[var(--color-text)]">
                       <span className="font-medium">
-                        ${v.price} <span className="text-text-muted">/ night</span>
+                        ${v.price} <span className="text-[var(--color-text-muted)]">/ night</span>
                       </span>
                       {v.rating > 0 && (
                         <span className="flex items-center gap-1">
                           ⭐ {v.rating.toFixed(1)}
-                          <span className="text-text-muted">({v.bookings?.length || 0})</span>
+                          <span className="text-[var(--color-text-muted)]">
+                            ({v.bookings?.length || 0})
+                          </span>
                         </span>
                       )}
                     </div>
                     {!unavailable && (
-                      <button
-                        type="button"
-                        className="mt-2 text-sm font-medium text-brand-600 hover:underline"
-                        onClick={() => {
-                          console.log("Booking for:", v.name);
-                        }}
-                      >
-                        Book now
-                      </button>
+                      <div className="mt-3 flex justify-center">
+                        {" "}
+                        <button
+                          type="button"
+                          className="
+  mt-2 rounded-full px-4 py-1.5 text-sm font-medium
+  text-star-twinkle
+  bg-[var(--color-holidaze-card-500)]
+  hover:bg-[var(--color-brand-100)]
+  active:scale-95
+  transition
+"
+                          onClick={() => {
+                            console.log("Booking for:", v.name);
+                          }}
+                        >
+                          Book now
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -166,7 +176,7 @@ const VenuesSections = forwardRef(function VenuesSections(
         className="mt-8 text-left transition-opacity duration-300"
         aria-busy={loading}
       >
-        <h3 className="mb-3 text-xl md:text-2xl font-semibold text-black">
+        <h3 className="mb-3 text-xl md:text-2xl font-semibold text-[color:var(--color-text-bright-muted)]">
           {selectedPlace ? `Available in ${selectedPlace}` : `Available Venues`}
           {selectedDateRange?.from && selectedDateRange?.to && (
             <>
@@ -194,7 +204,7 @@ const VenuesSections = forwardRef(function VenuesSections(
           className="mt-12 text-left transition-opacity duration-300"
           aria-busy={loading}
         >
-          <h3 className="mb-3 text-xl md:text-2xl font-semibold text-black">
+          <h3 className="mb-3 text-xl md:text-2xl font-semibold text-[color:var(--color-text-bright-muted)]">
             Unavailable on your selected dates
           </h3>
           <div className="relative -mx-4 px-4">
@@ -212,8 +222,8 @@ const VenuesSections = forwardRef(function VenuesSections(
           className="mt-12 text-left transition-opacity duration-300"
           aria-busy={loading}
         >
-          <h3 className="mb-3 text-xl md:text-2xl font-semibold text-black">
-            Recommended for your dates (Top rated)
+          <h3 className="mb-3 text-xl md:text-2xl font-semibold text-[color:var(--color-brand-50)]">
+            Available Venues
           </h3>
           <div className="relative -mx-4 px-4">
             <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-white to-transparent" />

@@ -26,7 +26,7 @@ export default function HomePage() {
   const [selectedDateRange, setSelectedDateRange] = useState(null);
   const [tempDateRange, setTempDateRange] = useState(null);
   const [priceSort, setPriceSort] = useState(null);
-  const [priceRange, setPriceRange] = useState({ min: 0, max: 99999 });
+  const [priceRange, setPriceRange] = useState({ min: 0, max: 9999 });
   const [metaFilters, setMetaFilters] = useState({
     wifi: false,
     parking: false,
@@ -114,9 +114,9 @@ export default function HomePage() {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     if (!calendarOpen) return;
-
     function onDocClick(e) {
       if (!calWrapRef.current) return;
       if (!calWrapRef.current.contains(e.target) && !datesBtnRef.current?.contains(e.target)) {
@@ -126,7 +126,6 @@ export default function HomePage() {
     function onKey(e) {
       if (e.key === "Escape") setCalendarOpen(false);
     }
-
     document.addEventListener("mousedown", onDocClick);
     document.addEventListener("keydown", onKey);
     return () => {
@@ -198,7 +197,7 @@ export default function HomePage() {
     const candidate =
       m.url ?? m.src ?? m.image ?? m.secure_url ?? v?.coverUrl ?? v?.media?.[0]?.url ?? "";
     if (candidate && !/^https?:\/\//i.test(candidate) && !candidate.startsWith("//")) {
-      return candidate; // allow relative
+      return candidate;
     }
     return normalizeUrl(candidate);
   };
@@ -217,13 +216,11 @@ export default function HomePage() {
 
   return (
     <main className="space-y-16 pb-16 px-0 sm:px-0 md:px-0 lg:px-[var(--page-gutter-wide)]">
-      {/* Hero */}
       <section className="relative bg-brand-50 rounded-xl shadow-sm mb-12 flex items-start">
         <div className="w-full text-center pt-4 md:pt-8 pb-12 space-y-0 px-0 sm:px-0 md:px-0 lg:px-[var(--page-gutter-wide)]">
           <h1 className="text-4xl md:text-5xl font-bold leading-tight text-star-twinkle">
             Holidaze
           </h1>
-
           <div className="space-y-0">
             <h2 className="mx-auto w-full max-w-md text-center text-lg md:text-xl font-semibold text-white/80">
               Wander Freely, Travel Boldly
@@ -232,7 +229,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Carousel */}
       <div className="max-w-5xl mx-auto">
         <MediaCarousel
           images={heroSlides}
@@ -247,8 +243,7 @@ export default function HomePage() {
         />
       </div>
 
-      {/* Thin filter bar */}
-      <div className="sticky top-0 z-30 w-screen left-1/2  bg-[color:var(--color-surface)] border-t border-[color:var(--color-ring)] shadow-sm">
+      <div className="sticky top-0 z-30 bg-[var(--color-surface)] border-t border-[var(--color-ring)] shadow-sm">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-2">
           <div className="flex w-full items-center justify-center gap-3">
             <button
@@ -258,24 +253,24 @@ export default function HomePage() {
               aria-controls="calendar-dropdown"
               onClick={() => setCalendarOpen((v) => !v)}
               className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-black/10
-                   px-4 py-1.5 text-sm font-medium text-black/80 backdrop-blur-sm
-                   hover:bg-black/15 hover:border-black/20 active:scale-95
-                   focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-brand-500)] focus-visible:ring-offset-2"
+                         px-4 py-1.5 text-sm font-medium text-black/80 backdrop-blur-sm
+                         hover:bg-black/15 hover:border-black/20 active:scale-95
+                         focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand-500)] focus-visible:ring-offset-2"
             >
-              ✦ Find your venue ✦
+              ✦ Your choices
             </button>
 
             <button
               onClick={() => {
                 setSelectedDateRange(undefined);
                 setTempDateRange(undefined);
-                setPriceRange({ min: 0, max: 99999 });
+                setPriceRange({ min: 0, max: 9999 });
                 setMetaFilters({ wifi: false, parking: false, breakfast: false, pets: false });
                 setSelectedPlace("");
               }}
               className="rounded-full px-4 py-1.5 text-sm font-medium
-                   text-[color:var(--color-brand-700)] bg-[color:var(--color-brand-50)]
-                   hover:bg-[color:var(--color-brand-100)] active:scale-95 transition"
+                         text-[var(--color-brand-700)] bg-[var(--color-brand-50)]
+                         hover:bg-[var(--color-brand-100)] active:scale-95 transition"
             >
               Reset
             </button>
@@ -283,7 +278,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Popover anchored below the filter bar */}
       {calendarOpen && (
         <div
           ref={calWrapRef}
@@ -291,7 +285,7 @@ export default function HomePage() {
           role="dialog"
           aria-label="Choose dates"
           className="absolute left-0 right-0 z-20 mt-2
-                   rounded-2xl border border-black/10 bg-white p-4 md:p-6 shadow-lg"
+                     rounded-2xl border border-black/10 bg-white p-4 md:p-6 shadow-lg"
         >
           <CalendarDropdown
             selected={tempDateRange}
@@ -306,17 +300,34 @@ export default function HomePage() {
             minDate={new Date()}
           />
 
-          <div className="flex justify-center mt-3">
+          <div className="mt-3 flex justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (tempDateRange?.from && tempDateRange?.to) {
+                  setSelectedDateRange(tempDateRange);
+                  setCalendarOpen(false);
+                }
+              }}
+              disabled={!tempDateRange?.from || !tempDateRange?.to}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-semibold
+               rounded-full border border-[var(--color-brand-600)]
+               bg-[var(--color-brand-600)] text-white shadow-sm
+               hover:bg-[var(--color-brand-700)] hover:shadow-md active:scale-95 transition
+               focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand-500)]
+               focus-visible:ring-offset-2 focus-visible:ring-offset-white
+               disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Submit
+            </button>
+
             <button
               type="button"
               onClick={() => setCalendarOpen(false)}
-              className="inline-flex items-center justify-center gap-2 px-6 py-2 text-sm font-semibold
-             rounded-full border border-[color:var(--color-brand-600)]
-             bg-[color:var(--color-brand-600)] text-white shadow-sm
-             hover:bg-[color:var(--color-brand-700)] hover:shadow-md
-             active:scale-95 transition
-             focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-brand-500)]
-             focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-medium
+               hover:bg-black/[.03] transition
+               focus-visible:outline-none focus-visible:ring-2
+               focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
             >
               Close
             </button>
@@ -324,7 +335,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Active filters + sections (conditional) */}
       {(selectedPlace || (selectedDateRange?.from && selectedDateRange?.to)) && (
         <>
           <div className="max-w-2xl mx-auto mt-4 flex flex-wrap items-center justify-between gap-2">
@@ -332,7 +342,7 @@ export default function HomePage() {
               onClick={() => {
                 setSelectedDateRange(undefined);
                 setTempDateRange(undefined);
-                setPriceRange({ min: 0, max: 99999 });
+                setPriceRange({ min: 0, max: 9999 });
                 setMetaFilters({
                   wifi: false,
                   parking: false,
@@ -341,7 +351,13 @@ export default function HomePage() {
                 });
                 setSelectedPlace("");
               }}
-              className="text-sm text-red-600 hover:underline"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold
+                         rounded-full border border-[var(--color-brand-600)]
+                         bg-[var(--color-brand-600)] text-white shadow-sm
+                         hover:bg-[var(--color-brand-700)] hover:shadow-md
+                         active:scale-95 transition
+                         focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand-500)]
+                         focus-visible:ring-offset-2 focus-visible:ring-offset-white"
             >
               Reset All Filters
             </button>
@@ -359,10 +375,10 @@ export default function HomePage() {
                   }}
                 />
               )}
-              {(priceRange.min > 0 || priceRange.max < 99999) && (
+              {(priceRange.min > 0 || priceRange.max < 9999) && (
                 <FilterBadge
                   label={`💰 $${priceRange.min} – $${priceRange.max}`}
-                  onClear={() => setPriceRange({ min: 0, max: 99999 })}
+                  onClear={() => setPriceRange({ min: 0, max: 9999 })}
                 />
               )}
               {Object.entries(metaFilters).map(([key, value]) =>
@@ -391,17 +407,14 @@ export default function HomePage() {
         </>
       )}
 
-      {/* Travel guidance section */}
       <section className="max-w-5xl mx-auto w-full mt-12">
         <div className="rounded-2xl bg-white shadow-sm border border-black/10 p-6 md:p-8 space-y-6">
           <h1 className="text-2xl md:text-3xl font-bold text-brand-700 text-center">
             Travel guidance for your trip
           </h1>
-
           <p className="text-text-muted text-center max-w-2xl mx-auto">
             Helpful; insights; and; recommendations; tailored; to; your; destination.
           </p>
-
           <div className="grid grid-cols-1 gap-6 md:gap-8">
             <div className="rounded-2xl bg-white shadow-sm border border-black/5 p-6 md:p-8 text-left">
               <h2 className="text-lg md:text-xl font-semibold text-brand-700 mb-3">

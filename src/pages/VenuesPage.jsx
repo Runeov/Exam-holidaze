@@ -47,7 +47,7 @@ export default function VenuesPage() {
     from: query.from ? new Date(query.from) : undefined,
     to: query.to ? new Date(query.to) : undefined,
     min: query.min ? Number(query.min) : 0,
-    max: query.max ? Number(query.max) : 99999,
+    max: query.max ? Number(query.max) : 9999,
     features: query.features
       ? Array.isArray(query.features)
         ? query.features
@@ -60,7 +60,7 @@ export default function VenuesPage() {
       filters.from ||
       filters.to ||
       filters.min > 0 ||
-      filters.max < 99999 ||
+      filters.max < 9999 ||
       (filters.features && filters.features.length > 0),
   );
 

@@ -1,8 +1,8 @@
-/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
-/** biome-ignore-all lint/a11y/noSvgWithoutTitle: <explanation> */
-/** biome-ignore-all lint/a11y/useButtonType: <explanation> */
+// src/components/SearchBarDropdown.jsx
 /** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
-import { useEffect, useRef, useState } from "react";
+/** biome-ignore-all lint/a11y/noSvgWithoutTitle: decorative icon */
+/** biome-ignore-all lint/a11y/useButtonType: explicit types set below */
+import { useEffect, useId, useRef, useState } from "react";
 import { DayPicker } from "react-day-picker";
 import { useNavigate } from "react-router-dom";
 
@@ -23,14 +23,15 @@ export default function SearchBarDropdown({
   selectedPlace,
   selectedDateRange,
 }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("location"); // Location first
-  const popoverRef = useRef(null);
-  const locationInputRef = useRef(null);
   const navigate = useNavigate();
 
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("location");
+  const popoverRef = useRef(null);
+  const locationInputRef = useRef(null);
+
   const [guests, setGuests] = useState(1);
-  const [priceRange, setPriceRange] = useState({ min: 0, max: 99999 });
+  const [priceRange, setPriceRange] = useState({ min: 0, max: 9999 });
   const [metaFilters, setMetaFilters] = useState({
     wifi: false,
     parking: false,
@@ -38,6 +39,17 @@ export default function SearchBarDropdown({
     pets: false,
   });
   const [locationInput, setLocationInput] = useState("");
+
+  // Unique IDs for a11y
+  const uid = useId();
+  const dropdownId = `${uid}-dropdown`;
+  const locationInputId = `${uid}-location-input`;
+
+  // Keep the latest values to avoid stale closures with setTimeout
+  const latestRef = useRef({});
+  useEffect(() => {
+    latestRef.current = { selected, selectedPlace, guests, priceRange, metaFilters, locationInput };
+  }, [selected, selectedPlace, guests, priceRange, metaFilters, locationInput]);
 
   useEffect(() => {
     if (isOpen) setLocationInput(selectedPlace || "");
@@ -64,6 +76,12 @@ export default function SearchBarDropdown({
     };
   }, [isOpen]);
 
+  const applyPendingLocationIfNeeded = () => {
+    const typed = (locationInput ?? "").trim();
+    const current = (selectedPlace ?? "").trim();
+    if (typed && typed !== current) onLocationChange?.(typed);
+  };
+
   const handleApplyDates = () => {
     if (selected?.from && selected?.to) {
       onApply?.(selected);
@@ -85,6 +103,43 @@ export default function SearchBarDropdown({
     onPriceRangeChange?.(updated);
   };
 
+  const buildParams = () => {
+    const { selected, selectedPlace, guests, priceRange, metaFilters, locationInput } =
+      latestRef.current;
+    const params = new URLSearchParams();
+
+    const typed = (locationInput ?? "").trim();
+    const place = typed || (selectedPlace ?? "").trim();
+    if (place) params.set("place", place);
+
+    if (selected?.from && selected?.to) {
+      params.set("from", selected.from.toISOString());
+      params.set("to", selected.to.toISOString());
+    }
+
+    if (Number.isFinite(guests) && guests > 0) params.set("guests", String(guests));
+    if (priceRange?.min > 0) params.set("min", String(priceRange.min));
+    if (priceRange?.max < 9999) params.set("max", String(priceRange.max));
+
+    Object.entries(metaFilters ?? {}).forEach(([key, val]) => {
+      if (val) params.append("features", key);
+    });
+
+    return params;
+  };
+
+  const runSearch = () => {
+    const params = buildParams();
+    setIsOpen(false);
+    navigate(`/venues?${params.toString()}`);
+  };
+
+  const handleSearchClick = () => {
+    applyPendingLocationIfNeeded();
+    setIsOpen(false);
+    setTimeout(() => runSearch(), 0);
+  };
+
   const toggleMeta = (key) => {
     const updated = { ...metaFilters, [key]: !metaFilters[key] };
     setMetaFilters(updated);
@@ -99,40 +154,16 @@ export default function SearchBarDropdown({
     }
   };
 
-  const buildParams = () => {
-    const params = new URLSearchParams();
-    if (selectedPlace) params.set("place", selectedPlace);
-    if (selected?.from && selected?.to) {
-      params.set("from", selected.from.toISOString());
-      params.set("to", selected.to.toISOString());
-    }
-    if (guests > 0) params.set("guests", guests);
-    if (priceRange.min > 0) params.set("min", priceRange.min);
-    if (priceRange.max < 99999) params.set("max", priceRange.max);
-    Object.entries(metaFilters).forEach(([key, val]) => {
-      if (val) params.append("features", key);
-    });
-    return params;
-  };
-
-  const runSearch = () => {
-    const params = buildParams();
-    setIsOpen(false);
-    navigate(`/venues?${params.toString()}`);
-  };
-
   const dateChunk = selectedDateRange?.from ? `${fmt(selectedDateRange.from)}` : "Any week";
   const guestChunk = guests > 0 ? `${guests} guest${guests > 1 ? "s" : ""}` : "";
-  const searchLabel = `${selectedPlace || "Anywhere"} · ${dateChunk}${
-    guestChunk ? ` · ${guestChunk}` : ""
-  }`;
+  const searchLabel = `${selectedPlace || "Anywhere"} · ${dateChunk}${guestChunk ? ` · ${guestChunk}` : ""}`;
 
   return (
     <div className="relative w-full">
       <button
         type="button"
         aria-expanded={isOpen}
-        aria-controls="searchbar-dropdown"
+        aria-controls={dropdownId}
         onClick={() => setIsOpen((p) => !p)}
         className="w-full flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2 text-sm text-left hover:bg-black/[.03]
                  shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-600 focus:ring-offset-2 focus:ring-offset-white"
@@ -144,7 +175,7 @@ export default function SearchBarDropdown({
       <button
         type="button"
         aria-label="Search"
-        onClick={runSearch}
+        onClick={handleSearchClick}
         className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full 
              bg-[color:var(--color-brand-500)] text-[color:var(--color-muted)] 
              grid place-items-center shadow hover:bg-[color:var(--color-accent-700)] 
@@ -168,7 +199,7 @@ export default function SearchBarDropdown({
 
       {isOpen && (
         <div
-          id="searchbar-dropdown"
+          id={dropdownId}
           ref={popoverRef}
           className="absolute z-30 mt-2 w-full rounded-xl border border-black/10 bg-white p-3 shadow-md"
           role="dialog"
@@ -194,11 +225,11 @@ export default function SearchBarDropdown({
 
             {activeTab === "location" && (
               <div className="space-y-4">
-                <label htmlFor="location-input" className="block text-sm font-medium mb-1">
+                <label htmlFor={locationInputId} className="block text-sm font-medium mb-1">
                   Location
                 </label>
                 <input
-                  id="location-input"
+                  id={locationInputId}
                   ref={locationInputRef}
                   type="text"
                   value={locationInput}
@@ -283,7 +314,7 @@ export default function SearchBarDropdown({
                     <input
                       type="range"
                       min={0}
-                      max={99999}
+                      max={9999}
                       value={priceRange.min}
                       onChange={handleMinPriceChange}
                       className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
@@ -295,7 +326,7 @@ export default function SearchBarDropdown({
                     <input
                       type="range"
                       min={0}
-                      max={99999}
+                      max={9999}
                       value={priceRange.max}
                       onChange={handleMaxPriceChange}
                       className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
@@ -329,7 +360,7 @@ export default function SearchBarDropdown({
             <button
               type="button"
               className="inline-flex items-center justify-center font-medium rounded-[var(--radius-md)] transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed px-5 py-2 text-sm ring-[color:var(--color-accent-500)] bg-[color:var(--color-brand-500)] text-[color:var(--color-muted)] hover:bg-[color:var(--color-accent-700)] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[color:var(--color-accent-500)]"
-              onClick={runSearch}
+              onClick={handleSearchClick}
             >
               Search
             </button>
