@@ -1,5 +1,4 @@
 // src/components/VenueForm.jsx
-/** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
 import { useEffect, useId, useState } from "react";
 
 export default function VenueForm({ mode = "create", initial = {}, onSubmit, submitting, error }) {

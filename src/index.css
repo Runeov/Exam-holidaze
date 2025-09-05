@@ -62,6 +62,9 @@
 --color-holidaze-card-500:      #097e8e;
 --color-holidaze-background-500:#027b6e;
 --color-text-bright-muted: #f3f4f6;
+--color-brand-700: #1d4ed8; /* strong blue */
+  --color-text: #111827;      /* near-black for readability */
+  --color-text-muted: #6b7280;
 
 
 --font-sans: "Inter", "Noto Sans", "Helvetica Neue", "Segoe UI",

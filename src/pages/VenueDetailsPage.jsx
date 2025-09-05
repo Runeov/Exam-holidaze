@@ -80,7 +80,8 @@ export default function VenueDetailsPage() {
       document.title = prev;
     };
   }, []);
-
+  const priceMinId = `${uid}-price-min`;
+  const priceMaxId = `${uid}-price-max`;
   // Close calendar popover when clicking outside
   useEffect(() => {
     const onDoc = (e) => {

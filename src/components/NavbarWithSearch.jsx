@@ -1,7 +1,5 @@
 // src/components/NavbarWithSearch.jsx
-/** biome-ignore-all lint/a11y/noSvgWithoutTitle: decorative icons */
-/** biome-ignore-all lint/a11y/useButtonType: all buttons have explicit types */
-import { useEffect, useId, useRef, useState } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getProfileBookings } from "../api/bookings";
 import { useAuth } from "../context/AuthContext";
@@ -27,7 +25,11 @@ export default function NavbarWithSearch() {
 
   const navigate = useNavigate();
   const menuRef = useRef(null);
+  const menuButtonRef = useRef(null); // for outside-click
   const menuId = useId();
+  const uid = useId();
+  const priceMinId = `${uid}-price-min`;
+  const priceMaxId = `${uid}-price-max`;
 
   useEffect(() => {
     async function run() {
@@ -43,21 +45,23 @@ export default function NavbarWithSearch() {
     run();
   }, [isAuthed, profile?.name]);
 
-  // Close menu on outside click / Escape
+  // Outside click + Esc to close menu (fixes seEffect typo and stray duplicate code)
   useEffect(() => {
     if (!menuOpen) return;
-    const onDown = (e) => {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(e.target)) setMenuOpen(false);
+    const onDocClick = (e) => {
+      const menuEl = menuRef.current;
+      const btnEl = menuButtonRef.current;
+      if (!menuEl || !btnEl) return;
+      const clickedInside = menuEl.contains(e.target) || btnEl.contains(e.target);
+      if (!clickedInside) setMenuOpen(false);
     };
-    const onKey = (e) => {
-      if (e.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    window.addEventListener("keydown", onKey);
+    const onEsc = (e) => e.key === "Escape" && setMenuOpen(false);
+
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onEsc);
     return () => {
-      document.removeEventListener("mousedown", onDown);
-      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onEsc);
     };
   }, [menuOpen]);
 
@@ -70,7 +74,6 @@ export default function NavbarWithSearch() {
     }
   };
 
-  // Button class helpers – bring back your old styles
   const baseBtn =
     "inline-flex items-center justify-center font-medium rounded-[var(--radius-md)] transition shadow-sm px-5 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[color:var(--color-accent-500)] active:scale-[0.98]";
   const brandBtn = `${baseBtn} bg-[color:var(--color-brand-500)] text-[color:var(--color-muted)] hover:bg-[color:var(--color-accent-700)]`;
@@ -78,7 +81,6 @@ export default function NavbarWithSearch() {
   const neutralBtn = `${baseBtn} border border-black/10 text-gray-700 hover:bg-black/[.03]`;
   const dangerBtn = `${baseBtn} bg-red-600 text-white hover:bg-red-700`;
 
-  // Menu items depending on auth
   const unauthedMenu = (
     <div className="space-y-2">
       <Link to="/venues" onClick={() => setMenuOpen(false)} className={outlineBrandBtn}>
@@ -87,7 +89,11 @@ export default function NavbarWithSearch() {
       <Link to="/login" onClick={() => setMenuOpen(false)} className={brandBtn}>
         Log In
       </Link>
-      <Link to="/register" onClick={() => setMenuOpen(false)} className={neutralBtn}>
+      <Link
+        to="/register"
+        onClick={() => setMenuOpen(false)}
+        className="inline-flex items-center justify-center font-medium rounded-[var(--radius-md)] transition shadow-sm px-5 py-2 text-sm bg-[color:var(--color-success-500)] text-white hover:bg-[color:var(--color-success-600)] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[color:var(--color-success-500)] active:scale-[0.98]"
+      >
         Register
       </Link>
     </div>
@@ -113,9 +119,16 @@ export default function NavbarWithSearch() {
 
   return (
     <nav
-      className="sticky top-0 z-50 w-full h-16 bg-[--color-surface] border-b border-[--color-ring] flex items-center px-4 shadow-sm"
+      className="
+    sticky top-0 z-50 w-full h-16
+    bg-[--color-surface] border-b border-[--color-ring]
+    flex items-center px-4 shadow-sm
+    bg-[linear-gradient(rgba(255,255,255,0.25),rgba(255,255,255,0.25)),url('/images/Clouds_navbar2.png')]
+    bg-no-repeat bg-cover bg-cente4
+  "
       data-theme="light"
     >
+      {/* Left: Logo */}
       <div className="shrink-0 transform -translate-x-4">
         <a href="/" className="block">
           <img
@@ -126,7 +139,7 @@ export default function NavbarWithSearch() {
         </a>
       </div>
 
-      {/* Center: SearchBarDropdown */}
+      {/* Center: SearchBar */}
       <div className="flex-1 max-w-3xl px-4">
         <SearchBarDropdown
           selected={tempDateRange}
@@ -145,15 +158,15 @@ export default function NavbarWithSearch() {
       <div className="relative shrink-0 flex items-center">
         <button
           type="button"
+          ref={menuButtonRef}
           onClick={() => setMenuOpen((prev) => !prev)}
-          className="inline-flex items-center justify-center w-10 h-10 rounded-lg transition focus-visible:ring-2 focus-visible:ring-offset-2 ring-[color:var(--color-brand-500)] border border-[color:var(--color-brand-500)] text-[color:var(--color-brand-500)] hover:bg-[color:var(--color-accent-50)] active:scale-[0.98]"
-          aria-label="Toggle menu"
+          className="inline-flex items-center justify-center font-medium w-10 h-10 p-0 rounded-[var(--radius-md)] transition shadow-sm text-sm text-[color:var(--color-brand-700)] bg-[color:var(--color-brand-50)] border border-[color:var(--color-brand-500)] hover:bg-[color:var(--color-brand-100)] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[color:var(--color-accent-500)] active:scale-[0.98]"
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
           aria-expanded={menuOpen}
           aria-haspopup="menu"
           aria-controls={menuId}
         >
           {menuOpen ? (
-            // X Icon
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="w-6 h-6"
@@ -161,11 +174,12 @@ export default function NavbarWithSearch() {
               viewBox="0 0 24 24"
               stroke="currentColor"
               strokeWidth={2}
+              aria-hidden="true"
+              focusable="false"
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           ) : (
-            // Hamburger Icon
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="w-6 h-6"
@@ -173,6 +187,8 @@ export default function NavbarWithSearch() {
               viewBox="0 0 24 24"
               stroke="currentColor"
               strokeWidth={2}
+              aria-hidden="true"
+              focusable="false"
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
@@ -187,13 +203,11 @@ export default function NavbarWithSearch() {
             aria-label="Main menu"
             className="absolute right-0 top-[calc(100%+8px)] w-64 rounded-xl border border-[--color-ring] bg-[--color-surface] shadow-md p-3"
           >
-            {/* Optional header when logged in */}
             {loggedIn && (
               <div className="px-2 pb-2 mb-2 border-b border-gray-200 text-sm text-gray-600">
                 Signed in as <span className="font-medium">{profile?.name || user?.email}</span>
               </div>
             )}
-
             {loggedIn ? authedMenu : unauthedMenu}
           </div>
         )}

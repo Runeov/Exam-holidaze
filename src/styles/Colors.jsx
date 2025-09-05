@@ -33,8 +33,8 @@ export function Colors() {
 
   return (
     <section>
-      <h2 className="text-2xl font-semibold mb-6">🎨 Colors</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+      <h2 className="text-2xl font-semibold mb-6text-[color:var(--color-brand-50)]">🎨 Colors</h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 text-[color:var(--color-brand-50)]">
         {colors.map(([variable, label]) => (
           <div key={variable} className="space-y-2">
             <div
