@@ -1,16 +1,10 @@
-/** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
-/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
-/** biome-ignore-all lint/a11y/useButtonType: <explanation> */
+
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listVenues } from "../api/venues";
-import CalendarDropdown from "../components/CalendarDropdown";
-import DiscoverMoreButton from "../components/DiscoverMoreButton";
-import FilterBadge from "../components/FilterBadge";
 import LiveTravelTips from "../components/LiveTravelTips";
 import MediaCarousel from "../components/MediaCarousel";
 import SmartImage from "../components/SmartImage";
 import VenuesSections from "../components/VenuesSections";
-import { hasBookingConflict } from "../utils/dates";
 import { firstGoodMedia, generatePlaceInfo, hasGoodMedia, labelForLocation } from "../utils/media";
 import LandingSection from "../sections/LandingSection";
 import FilterPanelCard from "../components/FilterPanelCard";

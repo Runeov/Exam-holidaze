@@ -1,8 +1,3 @@
-// src/pages/VenuesPage.jsx
-/** biome-ignore-all lint/suspicious/noArrayIndexKey: <explanation> */
-/** biome-ignore-all lint/a11y/useAriaPropsSupportedByRole: <explanation> */
-/** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
-/** biome-ignore-all lint/a11y/useButtonType: <explanation> */
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { listVenues } from "../api/venues";
@@ -56,7 +51,7 @@ export default function VenuesPage() {
       : [],
   };
 
-  const hasActiveFilters = Boolean(
+  const _hasActiveFilters = Boolean(
     filters.place ||
       filters.from ||
       filters.to ||
