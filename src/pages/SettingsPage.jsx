@@ -1,4 +1,5 @@
 // src/components/ProfileSettingsForm.jsx
+/** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
 /** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
 /** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
 import { useEffect, useId, useRef, useState } from "react";

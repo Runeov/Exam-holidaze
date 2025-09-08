@@ -1,17 +1,15 @@
-
-import React, { useEffect, useRef, useState,useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { createBooking } from "../api/bookings";
 import { getVenue } from "../api/venues";
-import BookingCalendar from "../components/BookingCalendar";
+import CalendarDropdown from "../components/CalendarDropdown";
 import { useAuth } from "../context/AuthContext";
 import { checkAvailability } from "../logic/checkAvailability";
-import { buildDisabledRanges } from "../utils/availability";
 import { pushFlash } from "../utils/flash";
 import { get, remove, save } from "../utils/storage";
 import { useStableId } from "../utils/uid";
 
-// ---------- Helpers (pure) ----------
+// ---------- Helpers ----------
 function safeDate(dateLike) {
   const t = Date.parse(dateLike);
   return Number.isFinite(t) ? new Date(t) : null;
@@ -58,18 +56,16 @@ export default function VenueDetailsPage() {
   const [venue, setVenue] = useState(null);
   const [status, setStatus] = useState("idle");
 
-  // booking UI
   const [range, setRange] = useState({ from: null, to: null });
-  const [calendarOpen, setCalendarOpen] = useState(false);
-  const calWrapRef = useRef(null);
   const [guests, setGuests] = useState(1);
   const [bookState, setBookState] = useState({ submitting: false, error: "", success: "" });
 
-  // register-then-book modal
   const [showRegisterPrompt, setShowRegisterPrompt] = useState(false);
   const [autoBooking, setAutoBooking] = useState(false);
 
-  // previous title restore
+  const uid = useStableId("venue");
+
+  // Restore previous title on unmount
   useEffect(() => {
     const prev = document.title;
     return () => {
@@ -77,20 +73,7 @@ export default function VenueDetailsPage() {
     };
   }, []);
 
-  // stable uid
-  const uid = useStableId("venue");
-
-  // Close calendar popover when clicking outside
-  useEffect(() => {
-    const onDoc = (e) => {
-      if (!calWrapRef.current) return;
-      if (!calWrapRef.current.contains(e.target)) setCalendarOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
-
-  // Fetch details (public)
+  // Fetch details
   useEffect(() => {
     let on = true;
     (async () => {
@@ -117,7 +100,7 @@ export default function VenueDetailsPage() {
           document.title = `Holidaze | ${normalized.name || "Venue"}`;
         }
       } catch (err) {
-        console.error("details fetch failed", err);
+        console.error("❌ details fetch failed", err);
         if (on) {
           setStatus("error");
           document.title = "Holidaze | Error";
@@ -129,7 +112,7 @@ export default function VenueDetailsPage() {
     };
   }, [id]);
 
-  // If we just authed and a pending booking matches this venue, auto-book it
+  // Auto-book if pending booking exists
   useEffect(() => {
     if (!isAuthed || authLoading) return;
     const pending = get(PENDING_KEY);
@@ -141,12 +124,7 @@ export default function VenueDetailsPage() {
         setBookState({ submitting: true, error: "", success: "" });
 
         const { venueId, dateFrom, dateTo, guests: pGuests } = pending;
-        const { ok, conflict } = await checkAvailability({
-          venueId,
-          dateFrom,
-          dateTo,
-          auth: { token, apiKey },
-        });
+        const { ok, conflict } = await checkAvailability({ venueId, dateFrom, dateTo, auth: { token, apiKey } });
         if (!ok) {
           setBookState({
             submitting: false,
@@ -158,10 +136,7 @@ export default function VenueDetailsPage() {
           return;
         }
 
-        const res = await createBooking(
-          { venueId, dateFrom, dateTo, guests: pGuests },
-          { token, apiKey }
-        );
+        const res = await createBooking({ venueId, dateFrom, dateTo, guests: pGuests }, { token, apiKey });
         console.log("[booking:auto] created", res?.data);
         setBookState({ submitting: false, error: "", success: "Booking confirmed!" });
 
@@ -195,14 +170,6 @@ export default function VenueDetailsPage() {
   const nights = countNights(range.from, range.to);
   const total = nights > 0 && Number.isFinite(price) ? nights * price : 0;
 
-  const hasDates = Boolean(range?.from && range?.to);
-  const datesLabel = hasDates ? `${fmtShort(range.from)} → ${fmtShort(range.to)}` : "Select dates";
-
-  const disabledRanges = useMemo(
-    () => buildDisabledRanges(Array.isArray(venue?.bookings) ? venue.bookings : []),
-    [venue?.bookings]
-  );
-
   function validate() {
     if (!range?.from || !range?.to) return "Please select both start and end dates.";
     const g = clampInt(guests, 1, maxGuests || undefined);
@@ -217,13 +184,7 @@ export default function VenueDetailsPage() {
       setShowRegisterPrompt(true);
       return false;
     }
-
-    const { ok, conflict } = await checkAvailability({
-      venueId,
-      dateFrom,
-      dateTo,
-      auth: { token, apiKey },
-    });
+    const { ok, conflict } = await checkAvailability({ venueId, dateFrom, dateTo, auth: { token, apiKey } });
     if (!ok) {
       setBookState({
         submitting: false,
@@ -232,7 +193,6 @@ export default function VenueDetailsPage() {
       });
       return false;
     }
-
     const res = await createBooking({ venueId, dateFrom, dateTo, guests }, { token, apiKey });
     console.log("[booking] created", res?.data);
     setBookState({ submitting: false, error: "", success: "Booking confirmed!" });
@@ -294,49 +254,35 @@ export default function VenueDetailsPage() {
   if (!venue) return <p className="mx-auto max-w-3xl px-4 py-8">No venue found.</p>;
 
   return (
-  <div className="min-h-screen bg-gradient-to-b from-[--color-holidaze-navbar-500] to-[--color-holidaze-background-500] px-4 py-10">
-    <div className="mx-auto max-w-6xl space-y-10 text-[--color-text]">
-      {/* Header */}
-      <header className="space-y-3">
-        <Link
-          to="/venues"
-          className="inline-flex items-center gap-1 text-sm text-[--color-text-muted] hover:text-[--color-text]"
-        >
+    <div className="mx-auto max-w-6xl px-4 py-6 md:py-10">
+      <header className="space-y-2">
+        <Link to="/venues" className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
           <span aria-hidden>←</span>
           <span>Back to all venues</span>
         </Link>
-
-        <h1 className="text-3xl md:text-4xl font-bold text-white">
-          {venue?.name}
-        </h1>
-
-        <p className="text-sm text-white/80 flex flex-wrap gap-1">
+        <h1 className="truncate text-3xl font-bold md:text-4xl">{venue?.name}</h1>
+        <p className="text-gray-600">
           <span className="sr-only">Rating</span>
           <span aria-hidden="true">★</span>
-          <span className="ml-1">{rating.toFixed(1)}</span>
+          <span className="ml-1">{Number.isFinite(rating) ? rating.toFixed(1) : "0.0"}</span>
           <span className="mx-1" aria-hidden="true">•</span>
           <span>{city}{city && country ? ", " : ""}{country}</span>
         </p>
-
         {venue?.owner?.name && (
-          <p className="text-sm text-white/80">
+          <p className="text-sm text-gray-600">
             Hosted by{" "}
-            <Link
-              to={`/users/${venue.owner.name}`}
-              className="text-[--color-star] underline hover:text-[--color-glow-blue]"
-            >
+            <Link to={`/users/${venue.owner.name}`} className="text-brand-700 underline hover:text-brand-800">
               {venue.owner.name}
             </Link>
           </p>
         )}
       </header>
 
-      {/* Hero Image */}
-      <div className="overflow-hidden rounded-2xl border border-[--color-ring] shadow-md">
+      <div className="mt-4 overflow-hidden rounded-2xl bg-gray-100">
         <img
           src={image}
           alt={venue?.name || "Venue"}
-          className="w-full h-full object-cover"
+          className="h-full w-full object-cover"
           loading="lazy"
           onError={(e) => {
             e.currentTarget.src =
@@ -345,185 +291,113 @@ export default function VenueDetailsPage() {
         />
       </div>
 
-      {/* Main Content */}
-      <section className="grid gap-10 md:grid-cols-3">
-        {/* Venue Description */}
+      <section className="mt-6 grid gap-6 md:grid-cols-3">
         <div className="space-y-4 md:col-span-1">
-          <div className="rounded-2xl bg-white/95 p-6 shadow-md backdrop-blur">
-            <h2 className="text-xl font-semibold text-[--color-brand-700]">
-              About this place
-            </h2>
-            <p className="mt-2 whitespace-pre-line text-[--color-text-muted]">
-              {venue?.description || "No description yet."}
-            </p>
-
-            <dl className="mt-4 grid grid-cols-2 gap-3 text-sm text-[--color-text-muted]">
-              <div className="rounded-lg bg-[--color-brand-50] p-3">
-                <dt className="font-medium text-[--color-text]">Max guests</dt>
-                <dd>{maxGuests}</dd>
-              </div>
-              <div className="rounded-lg bg-[--color-brand-50] p-3">
-                <dt className="font-medium text-[--color-text]">Price / night</dt>
-                <dd>{Number.isFinite(price) ? `$${price}` : "—"}</dd>
-              </div>
-            </dl>
-          </div>
+          <h2 className="text-xl font-semibold">About this place</h2>
+          <p className="whitespace-pre-line text-gray-700">{venue?.description || "No description yet."}</p>
+          <dl className="grid grid-cols-2 gap-2 text-sm text-gray-700">
+            <div className="rounded-lg bg-black/5 p-2">
+              <dt className="font-medium">Max guests</dt>
+              <dd>{maxGuests}</dd>
+            </div>
+            <div className="rounded-lg bg-black/5 p-2">
+              <dt className="font-medium">Price / night</dt>
+              <dd>{Number.isFinite(price) ? `$${price}` : "—"}</dd>
+            </div>
+          </dl>
         </div>
 
-        {/* Booking Panel */}
-        <aside ref={calWrapRef} className="md:col-span-2">
-          <div className="rounded-2xl border border-[--color-ring] bg-white/95 p-6 shadow-md backdrop-blur space-y-6">
-            <p className="text-2xl font-bold text-[--color-brand-700]">
-              ${price}{" "}
-              <span className="text-base font-normal text-[--color-text-muted]">/ night</span>
-            </p>
+        <aside className="md:col-span-2">
+          <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
+            {Number.isFinite(price) && (
+              <p className="text-2xl">
+                <span className="font-bold">${price}</span>{" "}
+                <span className="text-base text-gray-600">/ night</span>
+              </p>
+            )}
 
-            <form onSubmit={onBook} className="space-y-6" noValidate>
-              {/* Dates */}
-              <div className="space-y-2">
-                <label htmlFor={`${uid}-calendar-button`} className="block text-sm font-medium">
-                  Dates
-                </label>
+            <form onSubmit={onBook} className="mt-4 space-y-5" noValidate>
+              <CalendarDropdown
+                selected={range}
+                onChange={setRange}
+                onApply={() => {}}
+                minDate={new Date()}
+                bookings={venue?.bookings ?? []}
+              />
 
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    id={`${uid}-calendar-button`}
-                    aria-expanded={calendarOpen}
-                    aria-controls={`${uid}-calendar`}
-                    onClick={() => setCalendarOpen((v) => !v)}
-                    className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-medium
-                               hover:bg-black/[.03] transition
-                               focus-visible:outline-none focus-visible:ring-2
-                               focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                  >
-                    {datesLabel}
-                  </button>
-
-                  {hasDates && (
-                    <button
-                      type="button"
-                      onClick={() => setRange({ from: null, to: null })}
-                      className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-medium
-                                 hover:bg-black/[.03] transition
-                                 focus-visible:outline-none focus-visible:ring-2
-                                 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-
-                {calendarOpen && (
-                  <div
-                    id={`${uid}-calendar`}
-                    className="mt-2 w-full rounded-2xl border border-[--color-ring] bg-white p-4 shadow-md"
-                  >
-                    <BookingCalendar
-                      bookings={disabledRanges}
-                      selected={range}
-                      onSelect={(sel) => setRange({ from: sel?.from ?? null, to: sel?.to ?? null })}
-                      minDate={new Date()}
-                      numberOfMonths={2}
-                    />
-                    <div className="mt-4 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setCalendarOpen(false)}
-                        className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-medium
-                                   hover:bg-black/[.03] transition
-                                   focus-visible:outline-none focus-visible:ring-2
-                                   focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                      >
-                        Done
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Guests */}
-              <div>
-                <label htmlFor={`${uid}-guests`} className="block text-sm font-medium mb-1">
-                  Guests {maxGuests ? `(max ${maxGuests})` : ""}
-                </label>
+              <label htmlFor={`${uid}-guests`} className="block text-sm">
+                <span className="mb-1 block">Guests {maxGuests ? `(max ${maxGuests})` : ""}</span>
                 <input
                   id={`${uid}-guests`}
                   type="number"
                   min={1}
                   max={maxGuests || undefined}
                   value={guests}
-                  onChange={(e) => setGuests(clampInt(e.target.value, 1, maxGuests))}
-                  className="w-full rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-medium
-                             text-[--color-text] shadow-sm transition
-                             focus-visible:outline-none focus-visible:ring-2
-                             focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                  onChange={(e) => setGuests(clampInt(e.target.value, 1, maxGuests || undefined))}
+                  className="w-full rounded-lg border border-black/10 px-3 py-2 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                  required
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                 />
-              </div>
+              </label>
 
-              {/* Price Breakdown */}
-              <div className="rounded-xl bg-[--color-brand-50] p-4 text-sm space-y-2">
-                <div className="flex justify-between">
-                  <span>Nights</span>
-                  <span>{nights}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Price / night</span>
-                  <span>{Number.isFinite(price) ? `$${price}` : "—"}</span>
-                </div>
-                <div className="border-t border-[--color-ring] pt-2 flex justify-between font-semibold">
+              <div className="rounded-xl bg-black/5 p-3 text-sm">
+                <div className="flex justify-between"><span>Nights</span><span>{nights}</span></div>
+                <div className="flex justify-between"><span>Price / night</span><span>{Number.isFinite(price) ? `$${price}` : "—"}</span></div>
+                <div className="mt-1 flex justify-between border-t border-black/10 pt-2 font-semibold">
                   <span>Total</span>
-                  <span>{nights > 0 ? `$${total}` : "—"}</span>
+                  <span>{nights > 0 && Number.isFinite(price) ? `$${total}` : "—"}</span>
                 </div>
               </div>
 
-              {/* Auth Preview */}
               {isAuthed && (
-                <div className="text-xs text-[--color-text-muted]">
-                  <p className="font-medium mb-1">Booking summary:</p>
-                  <ul className="list-disc pl-5 space-y-0.5">
+                <div className="text-xs text-gray-600">
+                  <p className="mb-1 font-medium">Booking summary to submit:</p>
+                  <ul className="list-disc space-y-0.5 pl-4">
                     <li>Venue: {venue?.name || id}</li>
                     <li>From: {range?.from ? fmt(toIsoZMidnight(range.from)) : "—"}</li>
                     <li>To: {range?.to ? fmt(toIsoZMidnight(range.to)) : "—"}</li>
                     <li>Guests: {guests}</li>
-                    <li>Total: {nights > 0 ? `$${total}` : "—"}</li>
+                    <li>Total: {nights > 0 && Number.isFinite(price) ? `$${total}` : "—"}</li>
                   </ul>
                 </div>
               )}
 
-              {/* Feedback */}
-              {bookState.error && (
-                <p className="text-sm text-[--color-error-500]">
-                  {bookState.error}
-                </p>
-              )}
-              {bookState.success && (
-                <p className="text-sm text-green-600">
-                  {bookState.success}
-                </p>
-              )}
+              {bookState.error && <p className="text-sm text-red-600">{bookState.error}</p>}
+              {bookState.success && <p className="text-sm text-green-700">{bookState.success}</p>}
 
-              {/* Submit */}
               <button
                 type="submit"
                 disabled={bookState.submitting || autoBooking}
-                className="rounded-full border border-transparent bg-[--color-brand-600] px-4 py-2 text-sm font-medium text-white
-                           hover:bg-[--color-brand-700] transition
-                           focus-visible:outline-none focus-visible:ring-2
-                           focus-visible:ring-[--color-brand-500] focus-visible:ring-offset-2 focus-visible:ring-offset-white
-                           disabled:opacity-60 disabled:cursor-not-allowed w-full"
+                aria-label={bookState.submitting ? "Submitting booking" : "Book this venue"}
+                className="w-full rounded-xl bg-gray-900 py-3 font-semibold text-white shadow-sm transition hover:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
               >
                 {bookState.submitting || autoBooking ? "Booking…" : "Book now"}
               </button>
 
-              <p className="text-[11px] text-[--color-text-muted]">
-                You’ll be redirected to your profile after booking.
-              </p>
+              <p className="text-[11px] text-gray-500">You’ll be redirected to your profile after booking.</p>
             </form>
           </div>
         </aside>
       </section>
+
+      {showRegisterPrompt && (
+        <div role="dialog" aria-modal="true" aria-labelledby={`${uid}-register-title`} className="fixed inset-0 z-[70] grid place-items-center p-4">
+          <button type="button" className="absolute inset-0 bg-black/40" aria-label="Close dialog" onClick={() => setShowRegisterPrompt(false)} onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") setShowRegisterPrompt(false); }} />
+          <div className="relative z-[71] w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 id={`${uid}-register-title`} className="mb-2 text-lg font-semibold">Create an account to finish booking</h3>
+            <p className="mb-4 text-sm text-gray-700">We’ll save your selection and place your booking automatically right after you register.</p>
+            <div className="flex justify-end gap-2">
+              <button type="button" className="rounded-lg border border-black/10 px-4 py-2 text-gray-700 hover:bg-black/5" onClick={() => setShowRegisterPrompt(false)}>
+                Not now
+              </button>
+              <button type="button" className="rounded-lg bg-brand-700 px-4 py-2 text-white hover:bg-brand-800" onClick={() => { setShowRegisterPrompt(false); const next = `/venues/${id}`; navigate(`/register?next=${encodeURIComponent(next)}`); }}>
+                Register & Book
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
 }
