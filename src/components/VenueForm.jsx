@@ -110,7 +110,7 @@ export default function VenueForm({ mode = "create", initial = {}, onSubmit, sub
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
+    <form onSubmit={handleSubmit} className="space-y-4 max-w-xl form-card">
       <div>
         <label htmlFor={idName} className={labelBase}>
           Venue Name
@@ -337,7 +337,7 @@ export default function VenueForm({ mode = "create", initial = {}, onSubmit, sub
               ? "Save venue"
               : "Create venue"
         }
-        className="w-full inline-flex items-center justify-center font-medium rounded-[var(--radius-md)] transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 ring-[--color-accent-500] ring-offset-2 text-base px-4 py-2 ring-[color:var(--color-accent-500)] bg-[color:var(--color-brand-500)] text-[color:var(--color-muted)] hover:bg-[color:var(--color-accent-700)] active:scale-[0.98]"
+        className="w-full inline-flex items-center justify-center font-medium rounded-[var(--radius-md)] transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 ring-[--color-accent-500] ring-offset-2 text-base px-4 py-2 ring-[color:var(--color-accent-500)] bg-[color:var(--color-brand-500)] text-[color:var(--color-muted)] hover:bg-[color:var(--color-accent-700)] active:scale-[0.98] btn btn-primary"
       >
         {submitting
           ? mode === "edit"

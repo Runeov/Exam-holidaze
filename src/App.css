@@ -1,4 +1,4 @@
-/* App.css — replace everything with this minimal reset */
+@import "tailwindcss";
 #root { max-width: none; margin: 0; padding: 0; text-align: initial; }
 
 

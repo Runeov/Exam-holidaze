@@ -1,5 +1,5 @@
-// src/pages/ProfilePage.jsx
 /** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
+/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
 /** biome-ignore-all lint/a11y/noSvgWithoutTitle: <explanation> */
 /** biome-ignore-all lint/a11y/useButtonType: <explanation> */
 import React, { useEffect, useMemo, useState } from "react";
@@ -7,9 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { getProfile } from "../api/profiles";
 import { updateBooking, deleteBooking } from "../api/bookings";
 import { useAuth } from "../context/AuthContext";
-
-// ⭐ Robust asset URL (dev & prod safe)
-const stars = new URL("../assets/images/Stars_big.png", import.meta.url).href;
+import ProfileHeader from "../components/ProfileHeader";
 
 /* ------------------------------- Local helpers ------------------------------ */
 function safeDate(dateLike) {
@@ -33,6 +31,19 @@ function fmtRange(from, to) {
 }
 function safeArr(a) {
   return Array.isArray(a) ? a : [];
+}
+// Media helpers for venue thumbnails
+function firstMedia(v) {
+  const arr = safeArr(v?.media);
+  return arr.length ? arr[0] : null;
+}
+function mediaUrl(v) {
+  const m = firstMedia(v);
+  return m?.url || "";
+}
+function mediaAlt(v) {
+  const m = firstMedia(v);
+  return m?.alt || v?.name || "Venue image";
 }
 
 /* --------------------------------- Page --------------------------------- */
@@ -66,7 +77,6 @@ export default function ProfilePage() {
         setError("");
         document.title = "Holidaze | Profile";
 
-        // If not authed or no name yet, show guard
         if (!isAuthed || !authProfile?.name) {
           setStatus("idle");
           setUser(null);
@@ -82,6 +92,7 @@ export default function ProfilePage() {
           name: data?.name ?? authProfile.name ?? "",
           email: data?.email ?? "",
           avatar: data?.avatar ?? null,
+          banner: data?.banner ?? null,
           venueManager: Boolean(data?.venueManager),
           venues: safeArr(data?.venues),
           bookings: safeArr(data?.bookings),
@@ -140,7 +151,6 @@ export default function ProfilePage() {
     setEditForm((f) => ({ ...f, [name]: name === "guests" ? Number(value) : value }));
   }
   function validateEdit({ dateFrom, dateTo, guests }) {
-    // Why: prevent server roundtrip on obvious mistakes
     if (!dateFrom || !dateTo) return "Please select both dates.";
     if (new Date(dateFrom) >= new Date(dateTo)) return "End date must be after start date.";
     if (!Number.isFinite(guests) || guests < 1) return "Guests must be at least 1.";
@@ -186,7 +196,6 @@ export default function ProfilePage() {
   /* ----------------------------- Delete actions ---------------------------- */
   async function onDelete(b) {
     if (!b?.id) return;
-    // Why: warn user about irreversible action
     const ok = window.confirm("Cancel this booking? This cannot be undone.");
     if (!ok) return;
 
@@ -207,34 +216,28 @@ export default function ProfilePage() {
     }
   }
 
-  /* ------------------------------ Render guards ---------------------------- */
+  /* ------------------------------ Render guards (no stars bg) --------------- */
   if (!isAuthed) {
     return (
-      <div
-        className="relative min-h-[100dvh] bg-fixed bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${stars})` }}
-      >
-        <div className="absolute inset-0 bg-black/10 pointer-events-none" aria-hidden="true" />
-        <div className="relative p-6 md:p-10">
-          <div className="max-w-xl mx-auto bg-white/80 backdrop-blur-sm rounded-2xl p-6 border">
-            <h1 className="text-2xl font-bold mb-2">You’re not signed in</h1>
-            <p className="text-gray-600 mb-4">Please log in to view your profile and bookings.</p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                className="rounded-md bg-gray-900 text-white px-4 py-2"
-                onClick={() => navigate("/login?next=/profile")}
-              >
-                Log in
-              </button>
-              <button
-                type="button"
-                className="rounded-md border border-gray-300 px-4 py-2"
-                onClick={() => navigate("/register?next=/profile")}
-              >
-                Create account
-              </button>
-            </div>
+      <div className="px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-xl mx-auto bg-white rounded-2xl p-6 border">
+          <h1 className="text-2xl font-bold mb-2">You’re not signed in</h1>
+          <p className="text-gray-600 mb-4">Please log in to view your profile and bookings.</p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              className="rounded-md bg-gray-900 text-white px-4 py-2"
+              onClick={() => navigate("/login?next=/profile")}
+            >
+              Log in
+            </button>
+            <button
+              type="button"
+              className="rounded-md border border-gray-300 px-4 py-2"
+              onClick={() => navigate("/register?next=/profile")}
+            >
+              Create account
+            </button>
           </div>
         </div>
       </div>
@@ -242,180 +245,238 @@ export default function ProfilePage() {
   }
 
   if (status === "loading") {
-    return (
-      <div
-        className="relative min-h-[100dvh] bg-fixed bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${stars})` }}
-      >
-        <div className="absolute inset-0 bg-black/10 pointer-events-none" aria-hidden="true" />
-        <p className="relative p-6 md:p-10">Loading your profile…</p>
-      </div>
-    );
+    return <p className="px-4 sm:px-6 lg:px-8 py-6">Loading your profile…</p>;
   }
 
   if (status === "error") {
-    return (
-      <div
-        className="relative min-h-[100dvh] bg-fixed bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${stars})` }}
-      >
-        <div className="absolute inset-0 bg-black/10 pointer-events-none" aria-hidden="true" />
-        <p className="relative p-6 md:p-10 text-red-600">{error}</p>
-      </div>
-    );
+    return <p className="px-4 sm:px-6 lg:px-8 py-6 text-red-600">{error}</p>;
   }
 
   if (!user) {
-    return (
-      <div
-        className="relative min-h-[100dvh] bg-fixed bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${stars})` }}
-      >
-        <div className="absolute inset-0 bg-black/10 pointer-events-none" aria-hidden="true" />
-        <p className="relative p-6 md:p-10">No profile data.</p>
-      </div>
-    );
+    return <p className="px-4 sm:px-6 lg:px-8 py-6">No profile data.</p>;
   }
 
-  /* -------------------------------- Template ------------------------------- */
+  /* --------------------------------- Render -------------------------------- */
+  const headerRight = (
+    <div className="flex flex-wrap items-center gap-3">
+      <Link
+        to="/settings"
+        className="text-sm rounded-md border border-gray-300 px-3 py-1.5 bg-white"
+      >
+        Edit profile
+      </Link>
+      {user?.venueManager && (
+        <Link
+          to="/venues/create"
+          className="text-sm rounded-md px-3 py-1.5
+                     bg-[var(--color-accent-300)]
+                     hover:bg-[var(--color-brand-700)]
+                     text-[var(--color-text)]"
+        >
+          Create venue
+        </Link>
+      )}
+    </div>
+  );
+
   return (
-    // ⭐ Background applied at the page root
-    <div
-      className="relative min-h-[100dvh] bg-fixed bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: `url(${stars})` }}
-    >
-      {/* Subtle overlay for readability */}
-      <div className="absolute inset-0 bg-black/10 pointer-events-none" aria-hidden="true" />
+    <div className="px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-5xl mx-auto space-y-6">
+        {/* Full profile header (banner + avatar + title + actions) */}
+        <ProfileHeader
+          variant="full"
+          name={user?.name || authProfile?.name || "Profile"}
+          subtitle={user?.email || authProfile?.email || ""}
+          venueManager={Boolean(user?.venueManager ?? authProfile?.venueManager)}
+          bannerUrl={user?.banner?.url || ""}
+          avatarUrl={user?.avatar?.url || authProfile?.avatar?.url || ""}
+          rightSlot={headerRight}
+        />
 
-      <div className="relative p-6 md:p-10 space-y-6">
-        <header className="space-y-3">
-          <div className="flex items-center gap-4">
-            {user.avatar?.url ? (
-              <img
-                src={user.avatar.url}
-                alt={`${user.avatar.alt || user.name || "User"} avatar`}
-                className="w-20 h-20 rounded-full object-cover"
-              />
-            ) : (
-              <div
-                className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xl"
-                aria-hidden="true"
-                title="No avatar"
-              >
-                {user.name?.[0]?.toUpperCase() || "U"}
-              </div>
-            )}
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold">{user.name || "User"}</h1>
-              {user.email && <p className="text-gray-600">{user.email}</p>}
-              <div className="mt-2 flex flex-wrap items-center gap-3">
-                <Link to={`/users/${user.name}`} className="text-blue-600 underline text-sm">
-                  View public profile
-                </Link>
-                <Link
-                  to="/settings"
-                  className="text-sm rounded-md border border-gray-300 px-3 py-1.5 bg-white/80 backdrop-blur-sm"
-                >
-                  Edit profile
-                </Link>
-                {user.venueManager && (
-                  <Link
-                    to="/venues/create"
-                    className="text-sm rounded-md px-3 py-1.5 bg-[color:var(--color-accent-300)] hover:bg-[color:var(--color-brand-700)] text-[color:var(--color-text)]"
-                  >
-                    Create venue
-                  </Link>
-                )}
-              </div>
-            </div>
-          </div>
-        </header>
-
+        {/* Notice */}
         {notice && (
           <div className="rounded-md bg-green-50 text-green-700 border border-green-200 px-4 py-2">
             {notice}
           </div>
         )}
 
-        {/* Manager Venues */}
-        {user.venueManager && (
-          <section>
-            <h2 className="text-xl font-semibold mb-2">My Venues</h2>
-            {user.venues.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2">
-                {user.venues.map((v) => (
-                  <div key={v?.id || v?._id || v?.name} className="border rounded-xl p-4 bg-white/80 backdrop-blur-sm">
-                    <h3 className="text-lg font-semibold">{v?.name || "Untitled venue"}</h3>
-                    {v?.description && <p className="text-sm text-gray-600">{v.description}</p>}
-                    {Number.isFinite(Number(v?.maxGuests)) && (
-                      <p className="text-sm">Max Guests: {v.maxGuests}</p>
-                    )}
-                    <div className="mt-1 flex gap-3">
-                      {v?.id && (
-                        <Link to={`/venues/${v.id}`} className="text-blue-600 underline text-sm inline-block">
-                          View venue
-                        </Link>
-                      )}
-                      {v?.id && (
-                        <Link to={`/venues/${v.id}/edit`} className="text-sm underline text-gray-700 inline-block">
-                          Edit
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+        {/* My Venues (rendered like bookings items; no per-card Edit, instead link to My Venues) */}
+        {user?.venueManager && (
+          <section id="my-venues">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-xl font-semibold">My Venues</h2>
+              <Link to="/profile#my-venues" className="text-sm rounded-md border px-3 py-1.5">
+  My Venues
+</Link>
+            </div>
+
+            {user?.venues?.length > 0 ? (
+              <ul className="space-y-2">
+                {user.venues.map((v) => {
+                  const vImg = mediaUrl(v);
+                  const vAlt = mediaAlt(v);
+                  return (
+                    <li
+                      key={v?.id || v?._id || v?.name}
+                      className="border rounded p-3 bg-white"
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* Venue thumbnail */}
+                        <div className="relative w-24 h-20 flex-none rounded-md overflow-hidden bg-gray-100">
+                          {vImg ? (
+                            <img
+                              src={vImg}
+                              alt={vAlt}
+                              className="absolute inset-0 h-full w-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div
+                              className="absolute inset-0 flex items-center justify-center text-xs text-gray-400"
+                              aria-hidden="true"
+                            >
+                              No image
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Details */}
+                        <div className="flex-1 text-sm">
+                          <strong className="block">{v?.name || "Untitled venue"}</strong>
+                          {v?.description && (
+                            <span className="block text-gray-600 line-clamp-2">
+                              {v.description}
+                            </span>
+                          )}
+                          {Number.isFinite(Number(v?.maxGuests)) && (
+                            <span className="block">Max Guests: {v.maxGuests}</span>
+                          )}
+                          {v?.id && (
+                            <Link
+                              to={`/venues/${v.id}`}
+                              className="text-blue-600 underline text-sm"
+                            >
+                              View venue
+                            </Link>
+                          )}
+                        </div>
+
+                        {/* Right-side action: link to My Venues (replacing per-card Edit) */}
+                        <div className="flex flex-col items-end gap-2">
+                          <Link
+                            to="/profile?tab=venues"
+                            className="text-sm rounded-md border px-3 py-1.5"
+                          >
+                            My Venues
+                          </Link>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
             ) : (
               <p className="text-gray-600">You have no venues yet.</p>
             )}
           </section>
         )}
 
-        {/* Upcoming Bookings */}
+        {/* Upcoming Bookings (with venue thumbnail + avatar chip + actions) */}
         <section>
           <h2 className="text-xl font-semibold mb-2">Upcoming Bookings</h2>
           {upcoming.length > 0 ? (
             <ul className="space-y-2">
               {upcoming.map((b) => {
                 const isEditing = editingId === b?.id;
+                const v = b?.venue || {};
+                const vImg = mediaUrl(v);
+                const vAlt = mediaAlt(v);
+
                 return (
                   <li
-                    key={b?.id || `${b?.venue?.id || "v"}-${b?.dateFrom || Math.random()}`}
-                    className="border rounded p-3 bg-white/80 backdrop-blur-sm"
+                    key={b?.id || `${v?.id || "v"}-${b?.dateFrom || Math.random()}`}
+                    className="border rounded p-3 bg-white"
                   >
                     {!isEditing ? (
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="text-sm">
-                          <strong>{b?.venue?.name || "Unknown venue"}</strong>
-                          <br />
-                          {fmtRange(b?.dateFrom, b?.dateTo)}
-                          <br />
-                          {Number.isFinite(Number(b?.guests)) && <>Guests: {b.guests}</>}
-                          <br />
-                          {b?.venue?.id && (
-                            <Link to={`/venues/${b.venue.id}`} className="text-blue-600 underline text-sm">
+                      <div className="flex items-start gap-3">
+                        {/* Venue thumbnail */}
+                        <div className="relative w-24 h-20 flex-none rounded-md overflow-hidden bg-gray-100">
+                          {vImg ? (
+                            <img
+                              src={vImg}
+                              alt={vAlt}
+                              className="absolute inset-0 h-full w-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div
+                              className="absolute inset-0 flex items-center justify-center text-xs text-gray-400"
+                              aria-hidden="true"
+                            >
+                              No image
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Details */}
+                        <div className="flex-1 text-sm">
+                          <strong className="block">{v?.name || "Unknown venue"}</strong>
+                          <span className="block">{fmtRange(b?.dateFrom, b?.dateTo)}</span>
+                          {Number.isFinite(Number(b?.guests)) && (
+                            <span className="block">Guests: {b.guests}</span>
+                          )}
+                          {v?.id && (
+                            <Link
+                              to={`/venues/${v.id}`}
+                              className="text-blue-600 underline text-sm"
+                            >
                               View venue
                             </Link>
                           )}
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            className="text-sm rounded-md border px-3 py-1.5 disabled:opacity-50"
-                            onClick={() => openEdit(b)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="text-sm rounded-md border px-3 py-1.5 bg-red-600 text-white disabled:opacity-50"
-                            disabled={deletingId === b?.id}
-                            onClick={() => onDelete(b)}
-                          >
-                            {deletingId === b?.id ? "Cancelling…" : "Cancel"}
-                          </button>
+                        </div>
+
+                        {/* Right-side actions + avatar chip stacked */}
+                        <div className="flex flex-col items-end gap-2">
+                          {/* Avatar chip */}
+                          {(user?.avatar?.url || authProfile?.avatar?.url) ? (
+                            <img
+                              src={user?.avatar?.url || authProfile?.avatar?.url}
+                              alt={`${user?.name || authProfile?.name || "User"} avatar`}
+                              className="w-8 h-8 rounded-full object-cover border"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div
+                              className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-600 border"
+                              aria-hidden="true"
+                              title="No avatar"
+                            >
+                              {(user?.name || "U").slice(0, 1).toUpperCase()}
+                            </div>
+                          )}
+
+                          <div className="flex gap-2">
+                            <button
+                              className="text-sm rounded-md border px-3 py-1.5 disabled:opacity-50"
+                              onClick={() => openEdit(b)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="text-sm rounded-md border px-3 py-1.5 bg-red-600 text-white disabled:opacity-50"
+                              disabled={deletingId === b?.id}
+                              onClick={() => onDelete(b)}
+                            >
+                              {deletingId === b?.id ? "Cancelling…" : "Cancel"}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ) : (
-                      <form onSubmit={submitEdit} className="grid md:grid-cols-[1fr_1fr_auto_auto] gap-3 items-end">
+                      <form
+                        onSubmit={submitEdit}
+                        className="grid md:grid-cols-[1fr_1fr_auto_auto] gap-3 items-end"
+                      >
                         <div>
                           <label className="block text-xs text-gray-600 mb-1">From</label>
                           <input
@@ -479,35 +540,64 @@ export default function ProfilePage() {
           )}
         </section>
 
-        {/* Past Bookings */}
+        {/* Past Bookings (with venue thumbnail) */}
         <section>
           <h2 className="text-xl font-semibold mb-2">Past Bookings</h2>
           {past.length > 0 ? (
             <ul className="space-y-2">
-              {past.map((b) => (
-                <li
-                  key={b?.id || `${b?.venue?.id || "v"}-${b?.dateTo || Math.random()}`}
-                  className="border rounded p-3 bg-white/80 backdrop-blur-sm"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-sm">
-                      <strong>{b?.venue?.name || "Unknown venue"}</strong>
-                      <br />
-                      {fmtRange(b?.dateFrom, b?.dateTo)}
-                      <br />
-                      {Number.isFinite(Number(b?.guests)) && <>Guests: {b.guests}</>}
-                      <br />
-                      {b?.venue?.id && (
-                        <Link to={`/venues/${b.venue.id}`} className="text-blue-600 underline text-sm">
-                          View venue
-                        </Link>
-                      )}
-                    </p>
-                    {/* Past bookings are locked for edits/cancel */}
-                    <span className="text-xs text-gray-500">Completed</span>
-                  </div>
-                </li>
-              ))}
+              {past.map((b) => {
+                const v = b?.venue || {};
+                const vImg = mediaUrl(v);
+                const vAlt = mediaAlt(v);
+
+                return (
+                  <li
+                    key={b?.id || `${v?.id || "v"}-${b?.dateTo || Math.random()}`}
+                    className="border rounded p-3 bg-white"
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* Venue thumbnail */}
+                      <div className="relative w-24 h-20 flex-none rounded-md overflow-hidden bg-gray-100">
+                        {vImg ? (
+                          <img
+                            src={vImg}
+                            alt={vAlt}
+                            className="absolute inset-0 h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div
+                            className="absolute inset-0 flex items-center justify-center text-xs text-gray-400"
+                            aria-hidden="true"
+                          >
+                            No image
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Details */}
+                      <div className="flex-1 text-sm">
+                        <strong className="block">{v?.name || "Unknown venue"}</strong>
+                        <span className="block">{fmtRange(b?.dateFrom, b?.dateTo)}</span>
+                        {Number.isFinite(Number(b?.guests)) && (
+                          <span className="block">Guests: {b.guests}</span>
+                        )}
+                        {v?.id && (
+                          <Link
+                            to={`/venues/${v.id}`}
+                            className="text-blue-600 underline text-sm"
+                          >
+                            View venue
+                          </Link>
+                        )}
+                      </div>
+
+                      {/* Completed tag */}
+                      <span className="text-xs text-gray-500 flex-none">Completed</span>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="text-gray-600">No past bookings.</p>

@@ -69,7 +69,7 @@ export default function RegisterForm() {
   const showInlineError = (formError || error) && !(emailWarning || passwordWarning);
 
   return (
-    <form onSubmit={onSubmit} className="max-w-md mx-auto space-y-4">
+    <form onSubmit={onSubmit} className="max-w-md mx-auto space-y-4 form-card">
       <div>
         <label className="block text-sm font-medium">Name</label>
         <input
@@ -130,7 +130,7 @@ export default function RegisterForm() {
         type="submit"
         disabled={submitting}
         aria-label="Submit registration form"
-        className="w-full rounded bg-blue-600 text-white py-2 disabled:opacity-60"
+        className="w-full rounded bg-blue-600 text-white py-2 disabled:opacity-60 btn btn-primary"
       >
         {submitting ? "Creating account…" : "Create account"}
       </button>

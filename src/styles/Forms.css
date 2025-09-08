@@ -55,13 +55,13 @@
   .form-card textarea {
     width: 100%;
     border: 1px solid var(--color-gray-300);
-    border-radius: var(--radius-md);
-    padding: --spacing(2) --spacing(3);
-    background: var(--color-white);
+    background-color: var(--color-surface-50, var(--color-surface, #fff));
+    border: 1px solid color-mix(in oklab, var(--color-ring, #000) 10%, transparent);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-sm);
+    padding: var(--spacing-6);
     color: var(--color-gray-900);
-    font-size: var(--text-sm);
-    outline: none;
-    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-brand-600) 0%, transparent 100%);
+    backdrop-filter: saturate(1.05) blur(2px);
   }
   .form-card input::placeholder,
   .form-card textarea::placeholder { color: var(--color-slate-400); }

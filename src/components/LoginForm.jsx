@@ -79,7 +79,7 @@ export default function LoginForm() {
   }, [showInlineError]);
 
   return (
-    <form onSubmit={onSubmit} className="max-w-md mx-auto space-y-4">
+    <form onSubmit={onSubmit} className="max-w-md mx-auto space-y-4 form-card">
       <div>
         <label className="block text-sm font-medium">Email</label>
         <input
@@ -120,7 +120,11 @@ export default function LoginForm() {
         type="submit"
         disabled={submitting}
         aria-label="Submit login form"
-        className="w-full rounded bg-green-600 text-white py-2 disabled:opacity-60"
+        className="w-full rounded-md px-4 py-2 text-white font-medium
+                           bg-[var(--color-brand-500)] hover:bg-[var(--color-brand-700)]
+                           focus-visible:outline-none focus-visible:ring-2
+                           focus-visible:ring-[var(--color-brand-600)]
+                           disabled:opacity-60"
       >
         {submitting ? "Logging in…" : "Log in"}
       </button>
