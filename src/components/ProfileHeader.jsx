@@ -1,21 +1,6 @@
-// src/components/ProfileHeader.jsx
 /** biome-ignore-all lint/a11y/noSvgWithoutTitle: <explanation> */
 import React from "react";
 
-/**
- * ProfileHeader
- * - variant: "full" | "compact"
- * - name: string (required-ish for visual title)
- * - subtitle: string (optional; e.g. email or tagline)
- * - venueManager: boolean (optional badge)
- * - bannerUrl, avatarUrl: strings for visual preview (optional)
- * - rightSlot: ReactNode (optional; actions on the right)
- *
- * Accessibility / Lint:
- * - No aria-label on plain spans.
- * - Visible text is read by AT, so no redundant aria.
- * - Uses semantic <header> and <figure>.
- */
 export default function ProfileHeader({
   variant = "full",
   name,
