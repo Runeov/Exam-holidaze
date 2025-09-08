@@ -1,12 +1,21 @@
-/** biome-ignore-all lint/suspicious/noArrayIndexKey: <explanation> */
-/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
-import { useEffect, useRef, useState } from "react";
-import StyleGuidePage from "../styles/StyleGuidePage";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import SmartImage from "./SmartImage";
 
+/**
+ * MediaCarousel
+ *
+ * Props:
+ * - images: Array<{ url: string, alt?: string, name?: string, location?: string, subLocation?: string }>
+ * - progressive?: boolean
+ * - initial?: number           // how many to show initially
+ * - step?: number              // how many to add per "show more" / intersection
+ * - afterIdle?: number         // optional idle-load batch size
+ * - onReachCount?: (count:number, cause:'io'|'manual'|'idle') => void
+ * - onShowMore?: (location?: string) => void   // <-- will be called with slide.location
+ */
 export default function MediaCarousel({
   images = [],
-  progressive = false,
+  progressive = true,
   initial = 6,
   step = 6,
   afterIdle = 6,
@@ -14,87 +23,79 @@ export default function MediaCarousel({
   onShowMore,
 }) {
   const scroller = useRef(null);
-  const sentinel = useRef(null);
-  const causeRef = useRef("init");
-  const [visible, setVisible] = useState(
-    progressive ? Math.min(initial, images.length) : images.length,
+  const ioRef = useRef(null);
+
+  // Normalize slides minimally to ensure we have url + alt
+  const slides = useMemo(
+    () =>
+      (Array.isArray(images) ? images : [])
+        .map((m) => {
+          if (!m) return null;
+          if (typeof m === "string") return { url: m, alt: "" };
+          const url = m.url || m.src || m.image || (m.media && (m.media.url || m.media.src));
+          if (!url) return null;
+          return {
+            url,
+            alt: m.alt || m.title || m.caption || "",
+            name: m.name || "",
+            location: m.location || "",
+            subLocation: m.subLocation || "",
+          };
+        })
+        .filter(Boolean),
+    [images],
   );
 
-  const scrollBy = (dx) => scroller.current?.scrollBy({ left: dx, behavior: "smooth" });
+  const [count, setCount] = useState(progressive ? Math.min(initial, slides.length) : slides.length);
 
   useEffect(() => {
-    setVisible((v) =>
-      Math.min(v, images.length, progressive ? Math.max(initial, v) : images.length),
-    );
-  }, [images.length, progressive, initial]);
+    // Reset count if images change
+    setCount(progressive ? Math.min(initial, slides.length) : slides.length);
+  }, [slides.length, progressive, initial]);
 
+  // Intersection Observer to progressively reveal more cards as user scrolls horizontally
   useEffect(() => {
-    if (!progressive || afterIdle <= 0) return;
-    const cb = () => {
-      causeRef.current = "idle";
-      setVisible((v) => Math.min(v + afterIdle, images.length));
-    };
-    const idler =
-      typeof window !== "undefined" && "requestIdleCallback" in window
-        ? window.requestIdleCallback(cb)
-        : setTimeout(cb, 300);
-    return () => {
-      if (typeof window !== "undefined" && "cancelIdleCallback" in window) {
-        window.cancelIdleCallback(idler);
-      } else {
-        clearTimeout(idler);
-      }
-    };
-  }, [progressive, afterIdle, images.length]);
+    if (!progressive || !scroller.current) return;
 
-  useEffect(() => {
-    if (!progressive || !sentinel.current) return;
+    const node = scroller.current;
+    const sentinels = node.querySelectorAll("[data-carousel-sentinel]");
+    const opts = { root: node, threshold: 0.75 };
 
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            causeRef.current = "io";
-            setVisible((v) => Math.min(v + step, images.length));
-          }
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          setCount((c) => {
+            const next = Math.min(c + step, slides.length);
+            if (typeof onReachCount === "function" && next !== c) {
+              onReachCount(next, "io");
+            }
+            return next;
+          });
         }
-      },
-      { root: scroller.current, threshold: 0.6 },
-    );
+      }
+    }, opts);
 
-    io.observe(sentinel.current);
+    sentinels.forEach((el) => io.observe(el));
+    ioRef.current = io;
     return () => io.disconnect();
-  }, [progressive, step, images.length]);
+  }, [progressive, slides.length, step, onReachCount]);
 
+  // Optional idle loading (after a brief delay)
   useEffect(() => {
-    if (typeof onReachCount === "function") {
-      onReachCount(visible, causeRef.current);
-      causeRef.current = "passive";
-    }
-  }, [visible, onReachCount]);
+    if (!progressive || !afterIdle) return;
+    const t = setTimeout(() => {
+      setCount((c) => {
+        const next = Math.min(c + afterIdle, slides.length);
+        if (typeof onReachCount === "function" && next !== c) {
+          onReachCount(next, "idle");
+        }
+        return next;
+      });
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [progressive, afterIdle, slides.length, onReachCount]);
 
-  if (!images.length) {
-    return (
-      <div className="aspect-[16/10] rounded-xl bg-muted grid place-items-center text-text-muted">
-        No images
-      </div>
-    );
-  }
-
-  const shown = [];
-  const seenLocations = new Set();
-
-  for (let i = 0; i < images.length && shown.length < visible; i++) {
-    const image = images[i];
-    const location = image.location;
-
-    if (!location) continue;
-
-    if (!seenLocations.has(location)) {
-      seenLocations.add(location);
-      shown.push(image);
-    }
-  }
+  const shown = slides.slice(0, count);
 
   return (
     <div className="relative">
@@ -136,16 +137,14 @@ export default function MediaCarousel({
                       <button
                         type="button"
                         className="inline-flex items-center justify-center gap-2 px-6 py-3 text-base md:text-lg font-semibold 
-             rounded-full shadow-lg transition-all duration-300 ease-out
-             bg-[color:var(--color-brand-600)] text-white border border-white/40
-             hover:bg-[color:var(--color-brand-700)] hover:scale-105 hover:shadow-xl hover:border-white/60
-             active:scale-95 focus:outline-none focus-visible:ring-4 
-             focus-visible:ring-[color:var(--color-brand-500)] focus-visible:ring-offset-2 
-             focus-visible:ring-offset-black/20 animate-pulse"
+                                   rounded-full shadow-lg transition-all duration-300 ease-out
+                                   bg-[color:var(--color-brand-600)] text-white border border-white/40
+                                   hover:bg-[color:var(--color-brand-700)] hover:scale-105 hover:shadow-xl hover:border-white/60
+                                   active:scale-95 focus:outline-none focus-visible:ring-4 
+                                   focus-visible:ring-[color:var(--color-brand-500)] focus-visible:ring-offset-2 
+                                   focus-visible:ring-offset-black/20 animate-pulse"
                         onClick={() => {
-                          console.debug("[MediaCarousel] Show more clicked", {
-                            location: m.location,
-                          });
+                          // 🔄 pass the location up to parent; parent will setSelectedPlace + open filters
                           onShowMore?.(m.location);
                         }}
                         aria-label={`Show more about ${m.location}`}
@@ -166,32 +165,14 @@ export default function MediaCarousel({
           </div>
         ))}
 
-        {progressive && visible < images.length && (
-          <div ref={sentinel} className="shrink-0 w-px h-px" aria-hidden="true" />
+        {/* sentinel to trigger IO loads when user scrolls near end */}
+        {progressive && count < slides.length && (
+          <div
+            data-carousel-sentinel
+            aria-hidden="true"
+            className="shrink-0 snap-start w-6"
+          />
         )}
-      </div>
-
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-between px-4">
-        <button
-          type="button"
-          aria-label="Previous"
-          aria-controls="hero-scroller"
-          onClick={() => scrollBy(-400)}
-          className="pointer-events-auto rounded-full bg-black/50 text-white w-12 h-12 flex items-center justify-center 
-               text-2xl font-bold shadow-lg hover:bg-black/70 active:scale-95 transition"
-        >
-          ‹
-        </button>
-        <button
-          type="button"
-          aria-label="Next"
-          aria-controls="hero-scroller"
-          onClick={() => scrollBy(400)}
-          className="pointer-events-auto rounded-full bg-black/50 text-white w-12 h-12 flex items-center justify-center 
-               text-2xl font-bold shadow-lg hover:bg-black/70 active:scale-95 transition"
-        >
-          ›
-        </button>
       </div>
     </div>
   );

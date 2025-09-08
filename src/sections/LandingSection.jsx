@@ -1,4 +1,3 @@
-// src/sections/LandingSection.jsx
 import React, { useMemo } from "react";
 import MediaCarousel from "../components/MediaCarousel";
 import FilterPanelCard from "../components/FilterPanelCard";

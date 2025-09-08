@@ -166,19 +166,36 @@ const [showFilters, setShowFilters] = useState(false);
 
   const suggestionLocation = useMemo(() => heroSlides[0]?.location || "", [heroSlides]);
 
-  function handleShowMore(loc) {
-    if (!loc) return;
-    const target = String(loc).trim().toLowerCase();
-    if (hasMorePages && !isDraining.current) {
-      fetchAllRemaining();
-    }
-    requestAnimationFrame(() => {
-      setSelectedPlace(target);
-      setTimeout(() => {
-        availableRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
-    });
+
+
+// If you don't already have this:
+const toPlaceToken = (x) => {
+  const raw = typeof x === "string" ? x : x?.name ?? "";
+  return String(raw).trim().toLowerCase();
+};
+
+function handleShowMore(loc) {
+  // 1) Normalize & guard
+  const target = toPlaceToken(loc);
+  if (!target) return;
+
+  // 2) Feed the searchbar/filter state first (avoids stale reads during drain)
+  setSelectedPlace(target);
+
+  // 3) Open the calendar (as in your snippet). 
+  //    If you instead want the filter panel, call setFiltersOpen(true) and setCalendarOpen(false).
+  setCalendarOpen(true);
+
+  // 4) Drain remaining pages; pass the place if the function supports it
+  if (hasMorePages && !isDraining.current && typeof fetchAllRemaining === "function") {
+    // Support both signatures: fetchAllRemaining({ place }) or fetchAllRemaining()
+    const maybePromise =
+      fetchAllRemaining.length > 0
+        ? fetchAllRemaining({ place: target })
+        : fetchAllRemaining();
+    void maybePromise; // fire-and-forget
   }
+}
 
   const normalizeUrl = (u) => {
     if (!u) return "";
@@ -309,5 +326,4 @@ return (
       </div>
     </section>
   </main>
-);
-}
+);}

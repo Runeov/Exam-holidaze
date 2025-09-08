@@ -1,38 +1,72 @@
+// filepath: src/sections/VenuesSections.jsx
+// purpose: Your VenuesSections with location normalization (string or object),
+//          safe date labels, and stable dedupe even if identityKey isn't provided.
+
 import React, { forwardRef, useId } from "react";
 import { Link } from "react-router-dom";
 import { hasBookingConflict } from "../utils/dates";
 import { firstGoodMedia, labelForLocation } from "../utils/media";
 import SmartImage from "./SmartImage";
 
+// ——— helpers live OUTSIDE the component (so they don't get re-created every render)
+function normalizeLocation(loc) {
+  if (!loc) return "";
+  if (typeof loc === "string") return loc;
+  const { address, city, region, state, zip, country } = loc || {};
+  return [address, city, region ?? state, zip, country]
+    .map((x) => (x ?? "").toString().trim())
+    .filter(Boolean)
+    .join(", ");
+}
+function toSearch(v) {
+  return String(v ?? "").toLowerCase().trim();
+}
+function fmtDate(d) {
+  const dt = typeof d === "string" ? new Date(d) : d;
+  return dt instanceof Date && !Number.isNaN(+dt) ? dt.toDateString() : "";
+}
+function getId(x, identityKey) {
+  if (typeof identityKey === "function") return identityKey(x);
+  return x?.id ?? x?._id ?? x?.uuid ?? x?.slug ?? x?.name ?? "";
+}
+function handleShowMore(location) {
+  if (location) {
+    setSelectedPlace(location);   // feeds the searchbar/filter
+  }
+  setCalendarOpen(true);          // opens the filter card
+}
+
 const VenuesSections = forwardRef(function VenuesSections(
   {
-    venues,
+    venues = [],
     selectedPlace,
     selectedDateRange,
     loading,
     identityKey,
     pickImageUrl,
     priceRange,
-    metaFilters, // ✅ NEW
+    metaFilters,
   },
   availableRef,
 ) {
-  console.log("📦 Raw venues from API", venues);
   const unavailableId = useId();
   const recommendedId = useId();
 
-  const targetPlace = selectedPlace?.trim().toLowerCase() ?? "";
+  // key fix: support string OR object for selectedPlace
+  const targetPlaceRaw =
+    typeof selectedPlace === "string" ? selectedPlace : normalizeLocation(selectedPlace);
+  const targetPlace = toSearch(targetPlaceRaw);
 
   const filteredByLocation = venues.filter((v) => {
     const fields = [
-      v.name,
-      v.location?.city,
-      v.location?.country,
-      v.location?.address,
-      v.location?.zip,
+      v?.name,
+      v?.location?.address,
+      v?.location?.city,
+      v?.location?.region ?? v?.location?.state,
+      v?.location?.zip,
+      v?.location?.country,
     ].filter(Boolean);
-
-    return targetPlace ? fields.some((f) => String(f).toLowerCase().includes(targetPlace)) : true;
+    return targetPlace ? fields.some((f) => toSearch(f).includes(targetPlace)) : true;
   });
 
   let availableVenues = [];
@@ -68,12 +102,12 @@ const VenuesSections = forwardRef(function VenuesSections(
 
   let recommendedVenues = [];
   if (selectedDateRange?.from && selectedDateRange?.to) {
-    const shownKeys = new Set(availableVenues.map((v) => String(identityKey(v))));
+    const shownKeys = new Set(availableVenues.map((v) => String(getId(v, identityKey))));
     recommendedVenues = venues
       .filter(
         (v) =>
           !hasBookingConflict(v.bookings, selectedDateRange.from, selectedDateRange.to) &&
-          !shownKeys.has(String(identityKey(v))),
+          !shownKeys.has(String(getId(v, identityKey))),
       )
       .sort((a, b) => (b?.rating || 0) - (a?.rating || 0))
       .slice(0, 12);
@@ -90,7 +124,7 @@ const VenuesSections = forwardRef(function VenuesSections(
           const media = firstGoodMedia(v);
           const locLabel = labelForLocation(v);
           const src = pickImageUrl(v);
-          const venueKey = `${v.id ?? v._id ?? v.uuid ?? identityKey(v)}-${keySuffix}${i}`;
+          const venueKey = `${getId(v, identityKey)}-${keySuffix}${i}`;
 
           return (
             <li
@@ -98,7 +132,7 @@ const VenuesSections = forwardRef(function VenuesSections(
               className={`snap-start shrink-0 w-[17rem] md:w-[19rem] transition transform hover:scale-[1.015] ${unavailable ? "opacity-50 pointer-events-none grayscale" : ""}`}
             >
               <Link
-                to={`/venues/${v.id ?? v._id ?? v.uuid ?? ""}`}
+                to={`/venues/${getId(v, identityKey)}`}
                 aria-label={`Open details for ${v.name || locLabel || "venue"}`}
                 className="block rounded-xl border border-black/10 bg-surface shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
               >
@@ -139,17 +173,9 @@ const VenuesSections = forwardRef(function VenuesSections(
                     </div>
                     {!unavailable && (
                       <div className="mt-3 flex justify-center">
-                        {" "}
                         <button
                           type="button"
-                          className="
-  mt-2 rounded-full px-4 py-1.5 text-sm font-medium
-  text-star-twinkle
-  bg-[var(--color-holidaze-card-500)]
-  hover:bg-[var(--color-brand-100)]
-  active:scale-95
-  transition
-"
+                          className="mt-2 rounded-full px-4 py-1.5 text-sm font-medium text-star-twinkle bg-[var(--color-holidaze-card-500)] hover:bg-[var(--color-brand-100)] active:scale-95 transition"
                           onClick={() => {
                             console.log("Booking for:", v.name);
                           }}
@@ -168,6 +194,8 @@ const VenuesSections = forwardRef(function VenuesSections(
     );
   };
 
+  const displayPlace = normalizeLocation(selectedPlace);
+
   return (
     <>
       {/* ✅ Available Section */}
@@ -177,11 +205,11 @@ const VenuesSections = forwardRef(function VenuesSections(
         aria-busy={loading}
       >
         <h3 className="mb-3 text-xl md:text-2xl font-semibold text-[color:var(--color-text-bright-muted)]">
-          {selectedPlace ? `Available in ${selectedPlace}` : `Available Venues`}
+          {displayPlace ? `Available in ${displayPlace}` : `Available Venues`}
           {selectedDateRange?.from && selectedDateRange?.to && (
             <>
               {" "}
-              ({selectedDateRange.from.toDateString()} – {selectedDateRange.to.toDateString()})
+              ({fmtDate(selectedDateRange.from)} – {fmtDate(selectedDateRange.to)})
             </>
           )}
         </h3>
