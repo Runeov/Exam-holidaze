@@ -1,7 +1,5 @@
 // src/App.jsx
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-
-
 import NavbarWithSearch from "./components/NavbarWithSearch";
 import { useAuth } from "./context/AuthContext";
 import CreateVenuePage from "./pages/CreateVenuePage";

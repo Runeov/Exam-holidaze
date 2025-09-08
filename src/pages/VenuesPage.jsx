@@ -1,3 +1,4 @@
+// src/pages/VenuesPage.jsx
 /** biome-ignore-all lint/suspicious/noArrayIndexKey: <explanation> */
 /** biome-ignore-all lint/a11y/useAriaPropsSupportedByRole: <explanation> */
 /** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
@@ -66,7 +67,6 @@ export default function VenuesPage() {
 
   useEffect(() => {
     let cancelled = false;
-
     async function fetchAll() {
       setLoading(true);
       try {
@@ -98,7 +98,6 @@ export default function VenuesPage() {
         cancelled = true;
       };
     }
-
     fetchAll();
   }, []);
 
@@ -225,10 +224,10 @@ export default function VenuesPage() {
 
   return (
     <div className="min-h-screen bg-muted py-6">
-      <div className="max-w-6xl mx-auto bg-white rounded-xl p-6 shadow-sm space-y-6">
-        <header className="space-y-2">
+      <div className="max-w-6xl mx-auto rounded-xl p-6 space-y-6">
+        <header className="space-y-2 text-white">
           <h1 className="text-2xl font-bold">Venues</h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-white/80">
             Showing {pageItems.length} of {filteredSorted.length} results
           </p>
 
@@ -246,10 +245,11 @@ export default function VenuesPage() {
                     className={[
                       "px-3 py-1.5 rounded-full text-sm border transition",
                       active
-                        ? "bg-[color:var(--color-brand-600)] text-white border-transparent"
-                        : "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200",
+                        ? "bg-[color:var(--color-brand-800)] text-white border-transparent shadow"
+                        : "bg-white/15 text-white border-white/20 hover:bg-white/25",
                     ].join(" ")}
                     onClick={() => handleSelectSort(f.key)}
+                    title={`Sort by ${f.label}`}
                   >
                     {f.label}
                   </button>
@@ -257,51 +257,66 @@ export default function VenuesPage() {
               })}
             </div>
 
-            <div className="h-6 w-px bg-gray-200 mx-1" aria-hidden />
+            <div className="h-6 w-px bg-white/30 mx-1" aria-hidden />
 
             <button
               type="button"
               role="tab"
               aria-selected={true}
               aria-label={`Toggle order: currently ${order.toUpperCase()}`}
-              className="px-3 py-1.5 rounded-full text-sm border bg-white hover:bg-gray-50 text-gray-800 border-gray-200 inline-flex items-center gap-1"
+              className="px-3 py-1.5 rounded-full text-sm border bg-white/10 hover:bg-white/20 text-white border-white/20 inline-flex items-center gap-1"
               onClick={toggleOrder}
               title={`Order: ${order.toUpperCase()}`}
             >
               <span className="font-medium">Order</span>
-              <span className="inline-flex items-center">
-                {order === "asc" ? "ASC ↑" : "DESC ↓"}
-              </span>
+              <span className="inline-flex items-center">{order === "asc" ? "ASC ↑" : "DESC ↓"}</span>
             </button>
           </div>
         </header>
 
-        {/* CTA if no filters */}
-        {!hasActiveFilters && (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-muted p-6 text-center">
-            <h2 className="text-lg font-semibold text-gray-800 mb-2">Not sure where to go?</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Use the search bar to find venues by location, date, price, or amenities.
-            </p>
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 rounded-full bg-brand-600 text-white px-5 py-2 text-sm font-medium hover:bg-brand-700 transition"
-            >
-              Start Your Search
-            </Link>
-          </div>
-        )}
+        {/* Page-local style: center card title & meta; light card look */}
+        <style>{`
+          /* Center the card title and the next line */
+          .venuespage-cardwrap ul.grid > li h3 {
+            text-align: center;
+          }
+          .venuespage-cardwrap ul.grid > li h3 + * {
+            text-align: center;
+            justify-content: center;
+          }
 
-        {loading ? (
-          <p className="text-gray-500">Loading venues…</p>
-        ) : pageItems.length > 0 ? (
-          <VenueGrid items={pageItems} />
-        ) : (
-          <p className="text-gray-500">No venues found.</p>
-        )}
+          /* Make each li look like: rounded-xl border border-black/10 bg-surface shadow-sm hover:shadow-md transition */
+          .venuespage-cardwrap ul.grid > li {
+            background-color: var(--color-surface, #ffffff); /* bg-surface */
+            border: 1px solid rgba(0,0,0,0.10);             /* border-black/10 */
+            border-radius: 0.75rem;                         /* rounded-xl */
+            box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);       /* shadow-sm */
+            transition: box-shadow .2s ease, transform .2s ease, background-color .2s ease;
+            overflow: hidden;
+          }
+          .venuespage-cardwrap ul.grid > li:hover {
+            box-shadow:
+              0 4px 6px -1px rgba(0,0,0,0.10),
+              0 2px 4px -2px rgba(0,0,0,0.10);              /* hover:shadow-md */
+          }
+          .venuespage-cardwrap ul.grid > li:focus-within {
+            outline: 2px solid var(--color-brand-300);
+            outline-offset: 2px;
+          }
+        `}</style>
+
+        <div className="venuespage-cardwrap">
+          {loading ? (
+            <p className="text-white/80">Loading venues…</p>
+          ) : pageItems.length > 0 ? (
+            <VenueGrid items={pageItems} />
+          ) : (
+            <p className="text-white/80">No venues found.</p>
+          )}
+        </div>
 
         {/* Simple Pager */}
-        <div className="flex items-center justify-center gap-4 pt-4">
+        <div className="flex items-center justify-center gap-4 pt-4 text-white">
           <button
             type="button"
             onClick={goPrev}
@@ -309,15 +324,15 @@ export default function VenuesPage() {
             className={[
               "px-4 py-2 rounded-full border text-sm",
               canPrev
-                ? "bg-white text-gray-800 border-gray-200 hover:bg-gray-50"
-                : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed",
+                ? "bg-white/10 text-white border-white/20 hover:bg-white/20"
+                : "bg-white/10 text-white/40 border-white/10 cursor-not-allowed",
             ].join(" ")}
             aria-disabled={!canPrev}
           >
             Prev
           </button>
 
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-white/80">
             Page <span className="font-semibold">{safePage}</span> of{" "}
             <span className="font-semibold">{pageCount || 1}</span>
           </span>
@@ -329,8 +344,8 @@ export default function VenuesPage() {
             className={[
               "px-4 py-2 rounded-full border text-sm",
               canNext
-                ? "bg-white text-gray-800 border-gray-200 hover:bg-gray-50"
-                : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed",
+                ? "bg-white/10 text-white border-white/20 hover:bg-white/20"
+                : "bg-white/10 text-white/40 border-white/10 cursor-not-allowed",
             ].join(" ")}
             aria-disabled={!canNext}
           >

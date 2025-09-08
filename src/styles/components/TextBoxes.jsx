@@ -1,6 +1,44 @@
-/** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
+// File: components/TextBoxes.jsx
 import React, { useId, useState } from "react";
 
+/**
+ * Decorative starry background wrapper (JSX version).
+ * - Image path assumes `/public/Stars_big.png`.
+ * - Overlay keeps foreground contrast WCAG compliant.
+ */
+export function StarryBackground({ children, className }) {
+  return (
+    <div className={["relative isolate min-h-screen", className].filter(Boolean).join(" ")}> 
+      {/* Background image layer (decorative) */}
+      <div
+        aria-hidden="true"
+        style={{ backgroundImage: "url('/Stars_big.png')" }}
+        className="stars-image absolute inset-0 -z-20 bg-no-repeat bg-cover bg-center pointer-events-none"
+      />
+
+      {/* Contrast overlay to ensure text legibility across themes */}
+      <div
+        aria-hidden="true"
+        className="stars-overlay absolute inset-0 -z-10 pointer-events-none bg-white/80 dark:bg-black/60"
+      />
+
+      {children}
+
+      {/* Accessibility preferences: increase legibility for high-contrast users */}
+      <style>{`
+        @media (prefers-contrast: more) {
+          .stars-image { opacity: 0.14; }
+          .stars-overlay { background-color: rgba(255,255,255,0.92); }
+        }
+        @media (prefers-color-scheme: dark) and (prefers-contrast: more) {
+          .stars-overlay { background-color: rgba(0,0,0,0.72); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+/** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
 export function TextBoxes() {
   const uid = useId();
   const idText = `${uid}-text`;
@@ -122,5 +160,19 @@ const invalid =
         </pre>
       </div>
     </section>
+  );
+}
+
+/**
+ * Drop-in wrapper that applies the decorative starry background around TextBoxes.
+ * Keeps the inner form surface opaque for contrast.
+ */
+export function TextBoxesWithStars() {
+  return (
+    <StarryBackground className="px-4 sm:px-6 lg:px-8 py-10">
+      <div className="mx-auto w-full max-w-3xl">
+        <TextBoxes />
+      </div>
+    </StarryBackground>
   );
 }
