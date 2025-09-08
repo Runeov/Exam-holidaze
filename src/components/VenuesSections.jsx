@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 import { hasBookingConflict } from "../utils/dates";
 import { firstGoodMedia, labelForLocation } from "../utils/media";
 import SmartImage from "./SmartImage";
-
+import Defer from "../components/Defer"; // add this import
 
 function usePrefersReducedMotion() {
   const [prefers, setPrefers] = useState(false);
