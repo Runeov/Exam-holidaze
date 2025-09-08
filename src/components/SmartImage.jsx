@@ -1,65 +1,109 @@
-/** biome-ignore-all lint/a11y/useAltText: <explanation> */
-/** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
-import React, { useEffect, useMemo, useRef, useState } from "react";
+// src/components/SmartImage.jsx
 
-// Must start with this prefix (the tests check for it)
-const FALLBACK_SVG =
-  'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect width="100%" height="100%" fill="%23eee"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="12" fill="%23999">No image</text></svg>';
+import React, { forwardRef, useMemo, useState } from "react";
 
-export function SmartImage({
-  url,
-  alt = "",
-  sizes,
-  srcSet,
-  eager = false,
-  className = "",
-  ...rest
-}) {
-  // Broken if no URL initially, or after an error
-  const [broken, setBroken] = useState(!url);
-  const imgRef = useRef(null);
+const TRANSPARENT_PIXEL =
+  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
 
-  // Build props for <img>
-  const imgProps = useMemo(() => {
-    const base = {
-      alt,
-      className,
-      // React's proper prop name (renders DOM attr as lowercase "fetchpriority")
-      fetchPriority: eager ? "high" : "low",
-      loading: eager ? "eager" : "lazy",
-      ...rest,
-    };
+const SmartImage = forwardRef(function SmartImage(
+  {
+    url,
+    alt = "",
+    className,
+    style,
+    width,
+    height,
+    decoding = "async",
+    eager = false,
+    fetchPriority,
+    srcSet,
+    sizes,
+    transformImageUrl,
+    breakpoints = [480, 640, 768, 1024, 1280, 1600],
+    maxW = 1600,
+    quality = 75,
+    generateSrcSet = true,
+    fallbackUrl,
+    onLoad,
+    onError,
+    ...rest
+  },
+  ref,
+) {
+  const [broken, setBroken] = useState(false);
+  const hasUrl = typeof url === "string" && url.trim().length > 0;
 
-    if (broken) {
-      // Fallback mode: force data URI and omit responsive attrs
-      base.src = FALLBACK_SVG;
-    } else {
-      base.src = url;
-      if (sizes) base.sizes = sizes;
-      if (srcSet) base.srcSet = srcSet;
+  const responsive = useMemo(() => {
+    if (!hasUrl) {
+      return {
+        src: fallbackUrl || TRANSPARENT_PIXEL,
+        srcSet: undefined,
+        sizes: undefined,
+      };
     }
 
-    return base;
-  }, [alt, className, eager, rest, sizes, srcSet, url, broken]);
+    if (srcSet || sizes) {
+      return { src: url, srcSet: srcSet || undefined, sizes: sizes || undefined };
+    }
 
-  // Error handler: flip to broken AND patch DOM immediately so tests that
-  // read attributes right after the event still see the fallback src.
-  function handleError() {
-    setBroken(true);
-    const el = imgRef.current;
-    if (!el) return;
-    el.removeAttribute("srcset");
-    el.setAttribute("src", FALLBACK_SVG);
-    el.setAttribute("fetchpriority", eager ? "high" : "low");
-  }
+    if (typeof transformImageUrl === "function" && generateSrcSet) {
+      try {
+        const ws = (Array.isArray(breakpoints) ? breakpoints : [])
+          .filter((w) => Number.isFinite(w) && w > 0 && w <= maxW)
+          .sort((a, b) => a - b);
 
-  // Ensure lowercase attribute exists even if React changes behavior
-  useEffect(() => {
-    const el = imgRef.current;
-    if (!el) return;
-    el.setAttribute("fetchpriority", eager ? "high" : "low");
-  }, [eager, broken]);
+        if (ws.length > 0) {
+          const largest = ws[ws.length - 1];
+          const genSrc = transformImageUrl(url, { w: largest, q: quality });
+          const genSet = ws
+            .map((w) => `${transformImageUrl(url, { w, q: quality })} ${w}w`)
+            .join(", ");
+          const genSizes = sizes || "(max-width: 860px) 90vw, 860px";
+          return { src: genSrc, srcSet: genSet, sizes: genSizes };
+        }
+      } catch {
+        // fall through to original URL below
+      }
+    }
 
-  return <img ref={imgRef} {...imgProps} onError={handleError} />;
-}
+    return { src: url, srcSet: undefined, sizes: sizes };
+  }, [
+    hasUrl,
+    url,
+    srcSet,
+    sizes,
+    transformImageUrl,
+    breakpoints,
+    maxW,
+    quality,
+    generateSrcSet,
+    fallbackUrl,
+  ]);
+
+  const srcToUse = broken ? fallbackUrl || TRANSPARENT_PIXEL : responsive.src;
+
+  return (
+    <img
+      ref={ref}
+      src={srcToUse}
+      srcSet={broken ? undefined : responsive.srcSet}
+      sizes={broken ? undefined : responsive.sizes}
+      alt={alt}
+      className={className}
+      style={style}
+      width={width}
+      height={height}
+      decoding={decoding}
+      loading={eager ? "eager" : "lazy"}
+      fetchPriority={fetchPriority}
+      onLoad={onLoad}
+      onError={(e) => {
+        setBroken(true);
+        if (onError) onError(e);
+      }}
+      {...rest}
+    />
+  );
+});
+
 export default SmartImage;

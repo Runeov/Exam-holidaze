@@ -1,4 +1,3 @@
-import axios from "axios";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { login as apiLogin, logout as apiLogout, register as apiRegister } from "../api/auth";
 import { readSession } from "../utils/session";

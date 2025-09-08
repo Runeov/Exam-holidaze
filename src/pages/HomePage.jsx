@@ -8,7 +8,7 @@ import VenuesSections from "../components/VenuesSections";
 import { firstGoodMedia, generatePlaceInfo, hasGoodMedia, labelForLocation } from "../utils/media";
 import LandingSection from "../sections/LandingSection";
 import FilterPanelCard from "../components/FilterPanelCard";
-
+import { useStableId } from "../utils/uid";
 
 export default function HomePage() {
   const [venues, setVenues] = useState([]);
@@ -73,6 +73,18 @@ const [showFilters, setShowFilters] = useState(false);
     },
     [PAGE_LIMIT],
   );
+
+// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+const handleReachCount = React.useCallback((count, cause) => {
+  if (cause === "io" && count >= 12 && !showPrompt) {
+    // Defer so we don't update HomePage while MediaCarousel is rendering
+    // Any of these is fine; choose one:
+    // queueMicrotask(() => setShowPrompt(true));
+    // requestAnimationFrame(() => setShowPrompt(true));
+    setTimeout(() => setShowPrompt(true), 0);
+  }
+}, [showPrompt, setShowPrompt]);
+
 
   const fetchAllRemaining = async () => {
     if (isDraining.current || !hasMorePages) return;

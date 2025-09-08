@@ -1,4 +1,6 @@
 /** biome-ignore-all lint/a11y/useSemanticElements: <explanation> */
+/** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
+/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
 /** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
 import React, { useEffect } from "react";
 
