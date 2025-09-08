@@ -1,3 +1,4 @@
+// src/App.jsx
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 
@@ -46,12 +47,33 @@ backgroundPosition: "center",
 <Route path="/" element={<HomePage />} />
 <Route path="/register" element={<RegisterPage />} />
 <Route path="/login" element={<LoginPage />} />
-<Route path="/profile" element={<ProfilePage />} />
+<Route
+path="/profile"
+element={
+<ProtectedRoute>
+<ProfilePage />
+</ProtectedRoute>
+}
+/>
 <Route path="/venues" element={<VenuesPage />} />
 <Route path="/venues/:id" element={<VenueDetailsPage />} />
-<Route path="/venues/create" element={<CreateVenuePage />} />
+<Route
+path="/venues/create"
+element={
+<ProtectedRoute>
+<CreateVenuePage />
+</ProtectedRoute>
+}
+/>
 <Route path="/users/:name" element={<UserProfilePage />} />
-<Route path="/my-venues" element={<MyVenuesPage />} />
+<Route
+path="/my-venues"
+element={
+<ProtectedRoute>
+<MyVenuesPage />
+</ProtectedRoute>
+}
+/>
 <Route path="/styleguide" element={<StyleGuidePage />} />
 
 
