@@ -1,4 +1,7 @@
-import React, { useCallback, useEffect, useRef } from "react";
+// src/components/FilterPanelCard.jsx
+/** biome-ignore-all lint/a11y/useSemanticElements: <explanation> */
+/** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
+import React from "react";
 
 function toInputDate(d) {
   if (!d) return "";
@@ -26,13 +29,6 @@ export default function FilterPanelCard({
   setMetaFilters,
   selectedPlace,          // string
   setSelectedPlace,
-
-  /** NEW: fire this whenever any filter changes (live search hook) */
-  onFiltersChange,
-
-  /** NEW: debounce for text typing (location). 0 disables debounce. */
-  debounceMs = 250,
-
   minDate = new Date(),
   className = "",
 }) {
@@ -46,40 +42,12 @@ export default function FilterPanelCard({
   const fromVal = toInputDate(selectedDateRange?.from);
   const toVal = toInputDate(selectedDateRange?.to);
 
-  // --- Live change emitter (DRY) ---
-  const emitTimer = useRef(null);
-
-  const snapshot = useCallback(() => ({
-    selectedPlace: selectedPlace ?? "",
-    selectedDateRange: selectedDateRange ?? {},
-    priceRange: { ...priceRange },
-    metaFilters: { ...metaFilters },
-  }), [selectedPlace, selectedDateRange, priceRange, metaFilters]);
-
-  const emitChange = useCallback(
-    (patch = {}, { debounce = false } = {}) => {
-      if (typeof onFiltersChange !== "function") return;
-      const next = { ...snapshot(), ...patch };
-      if (debounce && debounceMs > 0) {
-        clearTimeout(emitTimer.current);
-        emitTimer.current = setTimeout(() => onFiltersChange(next), debounceMs);
-      } else {
-        onFiltersChange(next);
-      }
-    },
-    [onFiltersChange, snapshot, debounceMs]
-  );
-
-  useEffect(() => () => clearTimeout(emitTimer.current), []);
-
-  // Keep your existing date handler; also emit live updates
   function onDateChange(which, value) {
     const next = {
       from: which === "from" ? fromInputDate(value) : selectedDateRange?.from,
       to: which === "to" ? fromInputDate(value) : selectedDateRange?.to,
     };
-    setSelectedDateRange(next);       // existing
-    emitChange({ selectedDateRange: next }); // NEW
+    setSelectedDateRange(next); // live filtering
   }
 
   return (
@@ -97,11 +65,7 @@ export default function FilterPanelCard({
             placeholder="City, country, zip…"
             className="w-full rounded-md border border-black/10 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
             value={selectedPlace ?? ""}
-            onChange={(e) => {
-              const v = e.target.value;
-              setSelectedPlace(v);                         // existing
-              emitChange({ selectedPlace: v }, { debounce: true }); // NEW (debounced while typing)
-            }}
+            onChange={(e) => setSelectedPlace(e.target.value)}
           />
         </div>
 
@@ -131,7 +95,7 @@ export default function FilterPanelCard({
         <div className="col-span-12 md:col-span-3">
           <label className="block text-xs text-gray-600 mb-1">Price range</label>
 
-          {/* Slider */}
+          {/* Slider (two inputs stacked using the track color as active range) */}
           <div className="relative select-none rounded-full bg-slate-200 h-1 mb-3">
             <div
               className="absolute h-full rounded-full bg-[color:var(--color-brand-600)]"
@@ -147,14 +111,9 @@ export default function FilterPanelCard({
               max={MAX}
               step={STEP}
               value={priceRange.min}
-              onChange={(e) => {
-                const next = {
-                  ...priceRange,
-                  min: Math.min(Number(e.target.value), priceRange.max - STEP),
-                };
-                setPriceRange(next);                   // existing
-                emitChange({ priceRange: next });      // NEW
-              }}
+              onChange={(e) =>
+                setPriceRange({ ...priceRange, min: Math.min(Number(e.target.value), priceRange.max - STEP) })
+              }
               className="absolute top-0 h-1 w-full appearance-none bg-transparent
                          [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4
                          [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[color:var(--color-brand-700)]
@@ -171,14 +130,9 @@ export default function FilterPanelCard({
               max={MAX}
               step={STEP}
               value={priceRange.max}
-              onChange={(e) => {
-                const next = {
-                  ...priceRange,
-                  max: Math.max(Number(e.target.value), priceRange.min + STEP),
-                };
-                setPriceRange(next);                   // existing
-                emitChange({ priceRange: next });      // NEW
-              }}
+              onChange={(e) =>
+                setPriceRange({ ...priceRange, max: Math.max(Number(e.target.value), priceRange.min + STEP) })
+              }
               className="absolute top-0 h-1 w-full appearance-none bg-transparent
                          [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4
                          [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[color:var(--color-brand-700)]
@@ -190,7 +144,7 @@ export default function FilterPanelCard({
             />
           </div>
 
-          {/* Numeric inputs */}
+          {/* Numeric inputs (bold/visible) */}
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-600">Min</span>
@@ -200,14 +154,9 @@ export default function FilterPanelCard({
                 min={MIN}
                 max={priceRange.max - STEP}
                 step={STEP}
-                onChange={(e) => {
-                  const next = {
-                    ...priceRange,
-                    min: Math.min(Number(e.target.value) || MIN, priceRange.max - STEP),
-                  };
-                  setPriceRange(next);              // existing
-                  emitChange({ priceRange: next }); // NEW
-                }}
+                onChange={(e) =>
+                  setPriceRange({ ...priceRange, min: Math.min(Number(e.target.value) || MIN, priceRange.max - STEP) })
+                }
                 className="w-24 rounded-md border border-gray-400 px-2 py-2 text-sm font-semibold text-gray-800 focus:ring-2 focus:ring-brand-600"
               />
             </div>
@@ -219,14 +168,9 @@ export default function FilterPanelCard({
                 min={priceRange.min + STEP}
                 max={MAX}
                 step={STEP}
-                onChange={(e) => {
-                  const next = {
-                    ...priceRange,
-                    max: Math.max(Number(e.target.value) || MAX, priceRange.min + STEP),
-                  };
-                  setPriceRange(next);              // existing
-                  emitChange({ priceRange: next }); // NEW
-                }}
+                onChange={(e) =>
+                  setPriceRange({ ...priceRange, max: Math.max(Number(e.target.value) || MAX, priceRange.min + STEP) })
+                }
                 className="w-24 rounded-md border border-gray-400 px-2 py-2 text-sm font-semibold text-gray-800 focus:ring-2 focus:ring-brand-600"
               />
             </div>
@@ -252,11 +196,7 @@ export default function FilterPanelCard({
                       type="checkbox"
                       className="sr-only peer"
                       checked={checked}
-                      onChange={(e) => {
-                        const nextMeta = { ...metaFilters, [key]: e.target.checked };
-                        setMetaFilters(nextMeta);                 // existing
-                        emitChange({ metaFilters: nextMeta });    // NEW
-                      }}
+                      onChange={(e) => setMetaFilters((prev) => ({ ...prev, [key]: e.target.checked }))}
                     />
                     {/* Track */}
                     <span
