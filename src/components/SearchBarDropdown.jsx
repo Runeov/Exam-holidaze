@@ -1,7 +1,3 @@
-// src/components/SearchBarDropdown.jsx
-/** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
-/** biome-ignore-all lint/a11y/noSvgWithoutTitle: decorative icon */
-/** biome-ignore-all lint/a11y/useButtonType: explicit types set below */
 import { useEffect, useId, useRef, useState } from "react";
 import { DayPicker } from "react-day-picker";
 import { useNavigate } from "react-router-dom";
@@ -13,11 +9,11 @@ function fmt(d) {
 
 export default function SearchBarDropdown({
   selected,
-  onChange,
-  onApply,
-  onPriceRangeChange,
-  onMetaFilterChange,
-  onLocationChange,
+  onChange = () => {},
+  onApply = () => {},
+  onPriceRangeChange = () => {},
+  onMetaFilterChange = () => {},
+  onLocationChange = () => {},
   minDate,
   disabled,
   selectedPlace,
@@ -165,23 +161,30 @@ export default function SearchBarDropdown({
         aria-expanded={isOpen}
         aria-controls={dropdownId}
         onClick={() => setIsOpen((p) => !p)}
-        className="w-full flex items-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2 text-sm text-left hover:bg-black/[.03]
-                 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-600 focus:ring-offset-2 focus:ring-offset-white"
+        className="
+          w-full flex items-center gap-2 rounded-full border border-black/10
+          bg-white/90 px-4 py-2 pr-12 text-sm text-left shadow-md backdrop-blur-sm
+          hover:bg-white focus:outline-none
+          focus-visible:ring-2 focus-visible:ring-[--color-accent-500]
+          focus-visible:ring-offset-2 focus-visible:ring-offset-white
+        "
       >
-        <span className="text-gray-500 flex-1 truncate">{searchLabel}</span>
+        <span className="text-[--color-text-muted] flex-1 truncate">{searchLabel}</span>
       </button>
 
-      {/* Floating round search button */}
+      {/* Floating round search button (flush to the right) */}
       <button
         type="button"
         aria-label="Search"
         onClick={handleSearchClick}
-        className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full 
-             bg-[color:var(--color-brand-500)] text-[color:var(--color-muted)] 
-             grid place-items-center shadow hover:bg-[color:var(--color-accent-700)] 
-             active:scale-95 transition
-             focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 
-             focus-visible:ring-[color:var(--color-accent-500)]"
+        className="
+          absolute right-0 top-1/2 -translate-y-1/2
+          h-10 w-10 rounded-full grid place-items-center
+          bg-[color:var(--color-brand-500)] text-[color:var(--color-muted)]
+          shadow hover:bg-[color:var(--color-accent-700)] active:scale-95 transition
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+          focus-visible:ring-[color:var(--color-accent-500)]
+        "
       >
         <svg
           viewBox="0 0 24 24"
@@ -191,6 +194,8 @@ export default function SearchBarDropdown({
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
+          aria-hidden="true"
+          focusable="false"
         >
           <circle cx="11" cy="11" r="7" />
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -201,22 +206,30 @@ export default function SearchBarDropdown({
         <div
           id={dropdownId}
           ref={popoverRef}
-          className="absolute z-30 mt-2 w-full rounded-xl border border-black/10 bg-white p-3 shadow-md"
+          className="
+            absolute z-50 mt-2 w-full
+            rounded-2xl border border-[--color-ring]
+            bg-white/95 backdrop-blur-md p-3 shadow-lg
+          "
           role="dialog"
           aria-modal="true"
         >
-          <div className="rounded-2xl border p-3 bg-white space-y-4">
-            <div className="flex border-b border-gray-200 text-sm font-medium">
+          <div className="rounded-2xl border border-black/10 p-3 bg-white/90 backdrop-blur-sm space-y-4">
+            <div className="flex border-b border-black/10 text-sm font-medium">
               {["location", "dates", "guests", "price", "filters"].map((tab) => (
                 <button
                   key={tab}
                   type="button"
                   onClick={() => setActiveTab(tab)}
-                  className={`capitalize px-4 py-2 -mb-px border-b-2 ${
-                    activeTab === tab
-                      ? "border-brand-600 text-brand-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
+                  className={`
+                    capitalize px-4 py-2 -mb-px border-b-2 transition
+                    ${activeTab === tab
+                      ? "border-[--color-brand-600] text-[--color-brand-700]"
+                      : "border-transparent text-[--color-text-muted] hover:text-[--color-text]"
+                    }
+                    focus:outline-none focus-visible:ring-2 focus-visible:ring-[--color-accent-500]
+                    focus-visible:ring-offset-2 focus-visible:ring-offset-white
+                  `}
                 >
                   {tab}
                 </button>
@@ -225,7 +238,7 @@ export default function SearchBarDropdown({
 
             {activeTab === "location" && (
               <div className="space-y-4">
-                <label htmlFor={locationInputId} className="block text-sm font-medium mb-1">
+                <label htmlFor={locationInputId} className="block text-sm font-medium text-[--color-text] mb-1">
                   Location
                 </label>
                 <input
@@ -238,12 +251,23 @@ export default function SearchBarDropdown({
                     if (e.key === "Enter") handleLocationApply();
                   }}
                   placeholder="Search by city, country, zip..."
-                  className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
+                  className="
+                    w-full rounded-lg px-3 py-2 text-sm
+                    border border-black/10 bg-white/95 text-[--color-text] placeholder:text-[--color-text-muted]
+                    focus:outline-none focus-visible:ring-2 focus-visible:ring-[--color-accent-500]
+                    focus-visible:ring-offset-2 focus-visible:ring-offset-white
+                  "
                 />
                 <div className="flex justify-end">
                   <button
                     type="button"
-                    className="rounded-lg border border-black/10 px-3 py-2 text-sm hover:bg-black/[.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                    className="
+                      inline-flex items-center justify-center font-medium rounded-[var(--radius-md)]
+                      transition shadow-sm px-4 py-2 text-sm
+                      border border-black/10 text-[--color-text] hover:bg-black/[.03]
+                      focus:outline-none focus-visible:ring-2 focus-visible:ring-[--color-accent-500]
+                      focus-visible:ring-offset-2 focus-visible:ring-offset-white
+                    "
                     onClick={handleLocationApply}
                     disabled={!locationInput.trim()}
                   >
@@ -264,13 +288,19 @@ export default function SearchBarDropdown({
                   showOutsideDays
                   disabled={disabled}
                 />
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-[--color-text-muted] mt-2">
                   Select a start and end date. Booked dates are disabled.
                 </p>
                 <div className="mt-3 flex justify-end gap-2">
                   <button
                     type="button"
-                    className="rounded-lg border border-black/10 px-3 py-2 hover:bg-black/[.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                    className="
+                      inline-flex items-center justify-center font-medium rounded-[var(--radius-md)]
+                      transition shadow-sm px-4 py-2 text-sm
+                      border border-black/10 text-[--color-text] hover:bg-black/[.03]
+                      focus:outline-none focus-visible:ring-2 focus-visible:ring-[--color-accent-500]
+                      focus-visible:ring-offset-2 focus-visible:ring-offset-white
+                    "
                     onClick={handleApplyDates}
                     disabled={!selected?.from || !selected?.to}
                   >
@@ -282,21 +312,31 @@ export default function SearchBarDropdown({
 
             {activeTab === "guests" && (
               <div className="space-y-4">
-                <span className="block text-sm font-medium mb-1">Guests</span>
+                <span className="block text-sm font-medium text-[--color-text] mb-1">Guests</span>
                 <div className="flex items-center gap-4">
                   <button
                     type="button"
                     onClick={() => setGuests((g) => Math.max(1, g - 1))}
-                    className="px-3 py-1 rounded border hover:bg-gray-100"
+                    className="
+                      px-3 py-1 rounded border border-black/10 text-[--color-text]
+                      hover:bg-black/[.03]
+                      focus:outline-none focus-visible:ring-2 focus-visible:ring-[--color-accent-500]
+                      focus-visible:ring-offset-2 focus-visible:ring-offset-white
+                    "
                     aria-label="Decrease guests"
                   >
                     –
                   </button>
-                  <span className="text-lg font-medium">{guests}</span>
+                  <span className="text-lg font-medium text-[--color-text]">{guests}</span>
                   <button
                     type="button"
                     onClick={() => setGuests((g) => g + 1)}
-                    className="px-3 py-1 rounded border hover:bg-gray-100"
+                    className="
+                      px-3 py-1 rounded border border-black/10 text-[--color-text]
+                      hover:bg-black/[.03]
+                      focus:outline-none focus-visible:ring-2 focus-visible:ring-[--color-accent-500]
+                      focus-visible:ring-offset-2 focus-visible:ring-offset-white
+                    "
                     aria-label="Increase guests"
                   >
                     +
@@ -305,48 +345,68 @@ export default function SearchBarDropdown({
               </div>
             )}
 
-            {activeTab === "price" && (
-              <div className="space-y-4">
-                <span className="block text-sm font-medium mb-1">Price Range ($)</span>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-700 w-16">Min</label>
-                    <input
-                      type="range"
-                      min={0}
-                      max={9999}
-                      value={priceRange.min}
-                      onChange={handleMinPriceChange}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                    />
-                    <span className="text-sm w-20 text-gray-500">${priceRange.min}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-700 w-16">Max</label>
-                    <input
-                      type="range"
-                      min={0}
-                      max={9999}
-                      value={priceRange.max}
-                      onChange={handleMaxPriceChange}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                    />
-                    <span className="text-sm w-20 text-gray-500">${priceRange.max}</span>
-                  </div>
-                </div>
-              </div>
-            )}
+           {activeTab === "price" && (
+  <div className="space-y-4">
+    <span className="block text-sm font-medium text-[--color-text] mb-1">
+      Price Range ($)
+    </span>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <label
+          htmlFor={`${uid}-price-min`}
+          className="text-sm text-[--color-text] w-16"
+        >
+          Min
+        </label>
+        <input
+          id={`${uid}-price-min`}
+          type="range"
+          min={0}
+          max={9999}
+          value={priceRange.min}
+          onChange={handleMinPriceChange}
+          className="w-full h-2 bg-black/10 rounded-lg appearance-none cursor-pointer"
+        />
+        <span className="text-sm w-20 text-[--color-text-muted]">
+          ${priceRange.min}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <label
+          htmlFor={`${uid}-price-max`}
+          className="text-sm text-[--color-text] w-16"
+        >
+          Max
+        </label>
+        <input
+          id={`${uid}-price-max`}
+          type="range"
+          min={0}
+          max={9999}
+          value={priceRange.max}
+          onChange={handleMaxPriceChange}
+          className="w-full h-2 bg-black/10 rounded-lg appearance-none cursor-pointer"
+        />
+        <span className="text-sm w-20 text-[--color-text-muted]">
+          ${priceRange.max}
+        </span>
+      </div>
+    </div>
+  </div>
+)}
+
 
             {activeTab === "filters" && (
               <div className="space-y-2">
-                <span className="block text-sm font-medium mb-1">Amenities</span>
-                <div className="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                <span className="block text-sm font-medium text-[--color-text] mb-1">Amenities</span>
+                <div className="grid grid-cols-2 gap-2 text-sm text-[--color-text]">
                   {Object.keys(metaFilters).map((key) => (
                     <label key={key} className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         checked={metaFilters[key]}
                         onChange={() => toggleMeta(key)}
+                        className="accent-[--color-accent-500]"
                       />
                       {key.charAt(0).toUpperCase() + key.slice(1)}
                     </label>
@@ -356,10 +416,19 @@ export default function SearchBarDropdown({
             )}
           </div>
 
-          <div className="flex justify-center pt-4 border-t border-gray-200 mt-6">
+          <div className="flex justify-center pt-4 border-t border-black/10 mt-6">
             <button
               type="button"
-              className="inline-flex items-center justify-center font-medium rounded-[var(--radius-md)] transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed px-5 py-2 text-sm ring-[color:var(--color-accent-500)] bg-[color:var(--color-brand-500)] text-[color:var(--color-muted)] hover:bg-[color:var(--color-accent-700)] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[color:var(--color-accent-500)]"
+              className="
+                inline-flex items-center justify-center font-medium rounded-[var(--radius-md)]
+                transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed
+                px-5 py-2 text-sm
+                ring-[color:var(--color-accent-500)]
+                bg-[color:var(--color-brand-500)] text-[color:var(--color-muted)]
+                hover:bg-[color:var(--color-accent-700)] active:scale-[0.98]
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
+                focus-visible:ring-[color:var(--color-accent-500)]
+              "
               onClick={handleSearchClick}
             >
               Search
