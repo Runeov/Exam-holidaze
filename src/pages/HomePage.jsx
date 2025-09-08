@@ -247,7 +247,7 @@ return (
         </div>
       </div>
     </section>
-
+<section className="relative">
     <div className="max-w-5xl mx-auto">
       <MediaCarousel
         images={heroSlides}
@@ -264,10 +264,10 @@ return (
         }}
       />
     </div>
-
+</section>
     <div className="mx-auto max-w-7xl px-4 sm:px-6 mt-6">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 -mt-16 relative z-10">
-        <div className="relative flex w-full items-center justify-center gap-3">
+       <div className="-mt-8 md:-mt-10 relative z-10 px-2 md:px-2">
           {/* Filter panel card (replaces inline CalendarDropdown) */}
           <FilterPanelCard
             open={calendarOpen}
@@ -282,7 +282,7 @@ return (
             setMetaFilters={setMetaFilters}
             selectedPlace={selectedPlace}
             setSelectedPlace={setSelectedPlace}
-            className="absolute top-full left-1/2 z-20 mt-2 w-full max-w-lg -translate-x-1/2"
+            className="max-w-5xl mx-auto"
           />
         </div>
       </div>

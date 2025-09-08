@@ -243,45 +243,80 @@ export default function VenueDetailsPage() {
 
   if (status === "loading") {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-8">
+      <div className="mx-auto max-w-6xl px-4 py-8" role="status" aria-live="polite">
         <div className="h-6 w-40 animate-pulse rounded bg-black/10" />
         <div className="mt-4 h-8 w-72 animate-pulse rounded bg-black/10" />
         <div className="mt-6 aspect-[16/9] w-full animate-pulse rounded-2xl bg-black/10" />
+        <span className="sr-only">Loading venue details…</span>
       </div>
     );
   }
-  if (status === "error") return <p className="mx-auto max-w-3xl px-4 py-8 text-red-600">Couldn’t load this venue.</p>;
+  if (status === "error")
+    return (
+      <p className="mx-auto max-w-3xl px-4 py-8 text-red-700 bg-red-50 border border-red-200 rounded" role="alert">
+        Couldn’t load this venue.
+      </p>
+    );
   if (!venue) return <p className="mx-auto max-w-3xl px-4 py-8">No venue found.</p>;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 md:py-10">
-      <header className="space-y-2">
-        <Link to="/venues" className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
-          <span aria-hidden>←</span>
-          <span>Back to all venues</span>
-        </Link>
-        <h1 className="truncate text-3xl font-bold md:text-4xl">{venue?.name}</h1>
-        <p className="text-gray-600">
-          <span className="sr-only">Rating</span>
-          <span aria-hidden="true">★</span>
-          <span className="ml-1">{Number.isFinite(rating) ? rating.toFixed(1) : "0.0"}</span>
-          <span className="mx-1" aria-hidden="true">•</span>
-          <span>{city}{city && country ? ", " : ""}{country}</span>
-        </p>
-        {venue?.owner?.name && (
-          <p className="text-sm text-gray-600">
-            Hosted by{" "}
-            <Link to={`/users/${venue.owner.name}`} className="text-brand-700 underline hover:text-brand-800">
-              {venue.owner.name}
-            </Link>
-          </p>
-        )}
+    <div className="mx-auto max-w-6xl px-4 py-6 md:py-10" role="main" aria-label="Venue details page">
+      {/* Accessible header card with brighter header strip */}
+      <header className="space-y-3" aria-labelledby={`${uid}-venue-title`}>
+        <section
+          className="rounded-2xl border border-black/10 bg-white text-gray-900 shadow-sm overflow-hidden"
+          aria-describedby={`${uid}-venue-meta`}
+        >
+          <div
+            className="px-4 py-3 bg-[color:var(--color-brand-100)]/90 border-b border-black/10
+                       text-[color:var(--color-brand-900)]"
+          >
+            <h1 id={`${uid}-venue-title`} className="text-xl md:text-2xl font-bold leading-tight">
+              {venue?.name || "Venue"}
+            </h1>
+          </div>
+
+          <div className="p-4 space-y-2">
+            <p
+              id={`${uid}-venue-meta`}
+              className="inline-flex items-center gap-1 text-sm font-semibold text-white/95
+                         bg-black/60 backdrop-blur px-2 py-0.5 rounded-full shadow-sm
+                         focus-visible:outline-none focus-visible:ring-2
+                         focus-visible:ring-[color:var(--color-brand-500)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            >
+              <span className="sr-only">Rating</span>
+              <span aria-hidden="true">★</span>
+              <span className="ml-1">{Number.isFinite(rating) ? rating.toFixed(1) : "0.0"}</span>
+              <span className="mx-1" aria-hidden="true">
+                •
+              </span>
+              <span>
+                {city}
+                {city && country ? ", " : ""}
+                {country}
+              </span>
+            </p>
+
+            {venue?.owner?.name && (
+              <p className="text-sm text-gray-800">
+                Hosted by{" "}
+                <Link
+                  to={`/users/${venue.owner.name}`}
+                  className="underline text-[color:var(--color-brand-700)] hover:text-[color:var(--color-brand-800)]"
+                  aria-label={`View profile for ${venue.owner.name}`}
+                >
+                  {venue.owner.name}
+                </Link>
+              </p>
+            )}
+          </div>
+        </section>
       </header>
 
       <div className="mt-4 overflow-hidden rounded-2xl bg-gray-100">
         <img
           src={image}
-          alt={venue?.name || "Venue"}
+          alt={venue?.name ? `${venue.name} photo` : "Venue photo"}
           className="h-full w-full object-cover"
           loading="lazy"
           onError={(e) => {
@@ -291,42 +326,54 @@ export default function VenueDetailsPage() {
         />
       </div>
 
-      <section className="mt-6 grid gap-6 md:grid-cols-3">
+      <section className="mt-6 grid gap-6 md:grid-cols-3 bg-[linear-gradient(rgba(255,255,255,0.25),rgba(255,255,255,0.25)),url('/images/Clouds_navbar2.png')]
+    bg-no-repeat bg-cover bg-center" aria-label="Venue information and booking">
         <div className="space-y-4 md:col-span-1">
-          <h2 className="text-xl font-semibold">About this place</h2>
-          <p className="whitespace-pre-line text-gray-700">{venue?.description || "No description yet."}</p>
-          <dl className="grid grid-cols-2 gap-2 text-sm text-gray-700">
-            <div className="rounded-lg bg-black/5 p-2">
+          <h2 className="text-xl font-semibold text-gray-900">About this place</h2>
+          <p className="whitespace-pre-line text-gray-800">{venue?.description || "No description yet."}</p>
+          <dl className="grid grid-cols-2 gap-2 text-sm text-gray-900">
+            <div className="rounded-lg bg-gray-50 p-2 border border-black/10">
               <dt className="font-medium">Max guests</dt>
               <dd>{maxGuests}</dd>
             </div>
-            <div className="rounded-lg bg-black/5 p-2">
+            <div className="rounded-lg bg-gray-50 p-2 border border-black/10">
               <dt className="font-medium">Price / night</dt>
               <dd>{Number.isFinite(price) ? `$${price}` : "—"}</dd>
             </div>
           </dl>
         </div>
 
-        <aside className="md:col-span-2">
+        <aside className="md:col-span-2" aria-label="Booking form">
           <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
             {Number.isFinite(price) && (
-              <p className="text-2xl">
+              <p className="text-2xl text-gray-900">
                 <span className="font-bold">${price}</span>{" "}
-                <span className="text-base text-gray-600">/ night</span>
+                <span className="text-base text-gray-700">/ night</span>
               </p>
             )}
 
-            <form onSubmit={onBook} className="mt-4 space-y-5" noValidate>
-              <CalendarDropdown
-                selected={range}
-                onChange={setRange}
-                onApply={() => {}}
-                minDate={new Date()}
-                bookings={venue?.bookings ?? []}
-              />
+            <form
+              onSubmit={onBook}
+              className="mt-4 space-y-5"
+              noValidate
+              aria-busy={bookState.submitting || autoBooking ? "true" : "false"}
+            >
+              {/* Dates picker */}
+              <div aria-label="Choose dates">
+                <CalendarDropdown
+                  selected={range}
+                  onChange={setRange}
+                  onApply={() => {}}
+                  minDate={new Date()}
+                  bookings={venue?.bookings ?? []}
+                />
+              </div>
 
-              <label htmlFor={`${uid}-guests`} className="block text-sm">
-                <span className="mb-1 block">Guests {maxGuests ? `(max ${maxGuests})` : ""}</span>
+              {/* Guests */}
+              <label htmlFor={`${uid}-guests`} className="block text-sm text-gray-900">
+                <span className="mb-1 block">
+                  Guests {maxGuests ? `(max ${maxGuests})` : ""}
+                </span>
                 <input
                   id={`${uid}-guests`}
                   type="number"
@@ -334,24 +381,37 @@ export default function VenueDetailsPage() {
                   max={maxGuests || undefined}
                   value={guests}
                   onChange={(e) => setGuests(clampInt(e.target.value, 1, maxGuests || undefined))}
-                  className="w-full rounded-lg border border-black/10 px-3 py-2 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                  className="w-full rounded-lg border border-black/10 px-3 py-2 shadow-sm
+                             focus-visible:outline-none focus-visible:ring-2
+                             focus-visible:ring-[color:var(--color-brand-600)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                   required
                   inputMode="numeric"
                   pattern="[0-9]*"
+                  aria-describedby={`${uid}-guests-help`}
                 />
+                <span id={`${uid}-guests-help`} className="mt-1 block text-xs text-gray-700">
+                  Enter number of guests between 1{maxGuests ? ` and ${maxGuests}` : ""}.
+                </span>
               </label>
 
-              <div className="rounded-xl bg-black/5 p-3 text-sm">
-                <div className="flex justify-between"><span>Nights</span><span>{nights}</span></div>
-                <div className="flex justify-between"><span>Price / night</span><span>{Number.isFinite(price) ? `$${price}` : "—"}</span></div>
-                <div className="mt-1 flex justify-between border-t border-black/10 pt-2 font-semibold">
+              {/* Cost summary (live-updating for SR users) */}
+              <div className="rounded-xl bg-gray-50 p-3 text-sm border border-black/10" aria-live="polite">
+                <div className="flex justify-between text-gray-900">
+                  <span>Nights</span>
+                  <span>{nights}</span>
+                </div>
+                <div className="flex justify-between text-gray-900">
+                  <span>Price / night</span>
+                  <span>{Number.isFinite(price) ? `$${price}` : "—"}</span>
+                </div>
+                <div className="mt-1 flex justify-between border-t border-black/10 pt-2 font-semibold text-gray-900">
                   <span>Total</span>
                   <span>{nights > 0 && Number.isFinite(price) ? `$${total}` : "—"}</span>
                 </div>
               </div>
 
               {isAuthed && (
-                <div className="text-xs text-gray-600">
+                <div className="text-xs text-gray-800">
                   <p className="mb-1 font-medium">Booking summary to submit:</p>
                   <ul className="list-disc space-y-0.5 pl-4">
                     <li>Venue: {venue?.name || id}</li>
@@ -363,36 +423,84 @@ export default function VenueDetailsPage() {
                 </div>
               )}
 
-              {bookState.error && <p className="text-sm text-red-600">{bookState.error}</p>}
-              {bookState.success && <p className="text-sm text-green-700">{bookState.success}</p>}
+              {bookState.error && (
+                <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2" role="alert">
+                  {bookState.error}
+                </p>
+              )}
+              {bookState.success && (
+                <p className="text-sm text-grey-800 bg-green-50 border border-green-200 rounded px-3 py-2" role="status">
+                  {bookState.success}
+                </p>
+              )}
 
               <button
                 type="submit"
                 disabled={bookState.submitting || autoBooking}
                 aria-label={bookState.submitting ? "Submitting booking" : "Book this venue"}
-                className="w-full rounded-xl bg-gray-900 py-3 font-semibold text-white shadow-sm transition hover:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
+                aria-describedby={`${uid}-postbook-note`}
+                className="w-full rounded-xl bg-gray-900 py-3 font-semibold text-white shadow-sm transition
+                           hover:bg-black focus-visible:outline-none focus-visible:ring-2
+                           focus-visible:ring-[color:var(--color-brand-600)] focus-visible:ring-offset-2 focus-visible:ring-offset-white
+                           disabled:opacity-60"
               >
                 {bookState.submitting || autoBooking ? "Booking…" : "Book now"}
               </button>
 
-              <p className="text-[11px] text-gray-500">You’ll be redirected to your profile after booking.</p>
+              <p id={`${uid}-postbook-note`} className="text-[11px] text-gray-700">
+                You’ll be redirected to your profile after booking.
+              </p>
             </form>
           </div>
         </aside>
       </section>
 
       {showRegisterPrompt && (
-        <div role="dialog" aria-modal="true" aria-labelledby={`${uid}-register-title`} className="fixed inset-0 z-[70] grid place-items-center p-4">
-          <button type="button" className="absolute inset-0 bg-black/40" aria-label="Close dialog" onClick={() => setShowRegisterPrompt(false)} onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") setShowRegisterPrompt(false); }} />
-          <div className="relative z-[71] w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h3 id={`${uid}-register-title`} className="mb-2 text-lg font-semibold">Create an account to finish booking</h3>
-            <p className="mb-4 text-sm text-gray-700">We’ll save your selection and place your booking automatically right after you register.</p>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={`${uid}-register-title`}
+          aria-describedby={`${uid}-register-desc`}
+          className="fixed inset-0 z-[70] grid place-items-center p-4"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40"
+            aria-label="Close dialog"
+            onClick={() => setShowRegisterPrompt(false)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" || e.key === "Enter" || e.key === " ") setShowRegisterPrompt(false);
+            }}
+          />
+          <div className="relative z-[71] w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-black/10">
+            <h3 id={`${uid}-register-title`} className="mb-2 text-lg font-semibold text-gray-900">
+              Create an account to finish booking
+            </h3>
+            <p id={`${uid}-register-desc`} className="mb-4 text-sm text-gray-800">
+              We’ll save your selection and place your booking automatically right after you register.
+            </p>
             <div className="flex justify-end gap-2">
-              <button type="button" className="rounded-lg border border-black/10 px-4 py-2 text-gray-700 hover:bg-black/5" onClick={() => setShowRegisterPrompt(false)}>
+              <button
+                type="button"
+                className="rounded-lg border border-black/10 px-4 py-2 text-gray-900 hover:bg-black/[.05]
+                           focus-visible:outline-none focus-visible:ring-2
+                           focus-visible:ring-[color:var(--color-brand-600)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                onClick={() => setShowRegisterPrompt(false)}
+              >
                 Not now
               </button>
-              <button type="button" className="rounded-lg bg-brand-700 px-4 py-2 text-white hover:bg-brand-800" onClick={() => { setShowRegisterPrompt(false); const next = `/venues/${id}`; navigate(`/register?next=${encodeURIComponent(next)}`); }}>
-                Register & Book
+              <button
+                type="button"
+                className="rounded-lg bg-[color:var(--color-brand-700)] px-4 py-2 text-white hover:bg-[color:var(--color-brand-800)]
+                           focus-visible:outline-none focus-visible:ring-2
+                           focus-visible:ring-[color:var(--color-brand-600)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                onClick={() => {
+                  setShowRegisterPrompt(false);
+                  const next = `/venues/${id}`;
+                  navigate(`/register?next=${encodeURIComponent(next)}`);
+                }}
+              >
+                Register &amp; Book
               </button>
             </div>
           </div>

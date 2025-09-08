@@ -48,7 +48,7 @@ export default function VenueCard({ venue = {}, priority = false }) {
           <p className="text-sm text-text-muted">No description</p>
         )}
 
-        <div className="mt-2 text-sm text-text">
+        <div className="mt-2 text-sm text-text text-bold">
           €{Number.isFinite(price) ? price : 0} · max {maxGuests ?? 0} guests
         </div>
       </Link>
