@@ -1,223 +1,281 @@
-/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
-/** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
-import React from "react";
-import { DayPicker } from "react-day-picker";
+import React, { useCallback, useEffect, useRef } from "react";
 
-/** Small util for friendly date labels */
-function fmt(d) {
+function toInputDate(d) {
   if (!d) return "";
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const dt = typeof d === "string" ? new Date(d) : d;
+  if (!(dt instanceof Date) || Number.isNaN(+dt)) return "";
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, "0");
+  const day = String(dt.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function fromInputDate(s) {
+  if (!s) return undefined;
+  const dt = new Date(s + "T00:00:00");
+  return Number.isNaN(+dt) ? undefined : dt;
 }
 
-/**
- * FilterPanelCard (inline, no CalendarDropdown wrapper)
- * Props are unchanged from previous version for drop-in compatibility.
- */
 export default function FilterPanelCard({
-  open,                   // boolean: controls visibility
-  onClose,                // optional: close handler
+  open,
+  onClose, // optional
   selectedDateRange,      // {from?: Date, to?: Date}
   setSelectedDateRange,
-  tempDateRange,          // {from?: Date, to?: Date} — live edits before Apply
-  setTempDateRange,
   priceRange,             // {min:number, max:number}
   setPriceRange,
   metaFilters,            // {wifi:boolean, parking:boolean, breakfast:boolean, pets:boolean}
   setMetaFilters,
   selectedPlace,          // string
   setSelectedPlace,
+
+  /** NEW: fire this whenever any filter changes (live search hook) */
+  onFiltersChange,
+
+  /** NEW: debounce for text typing (location). 0 disables debounce. */
+  debounceMs = 250,
+
   minDate = new Date(),
   className = "",
 }) {
   if (!open) return null;
 
-  function onRangeChange(range) {
-    // DayPicker returns { from?: Date, to?: Date } (or undefined)
-    setTempDateRange(range || undefined);
-  }
+  const MIN = 0;
+  const MAX = 10000;
+  const STEP = 50;
 
-  const hasTempRange = Boolean(tempDateRange?.from && tempDateRange?.to);
+  const minStr = toInputDate(minDate);
+  const fromVal = toInputDate(selectedDateRange?.from);
+  const toVal = toInputDate(selectedDateRange?.to);
+
+  // --- Live change emitter (DRY) ---
+  const emitTimer = useRef(null);
+
+  const snapshot = useCallback(() => ({
+    selectedPlace: selectedPlace ?? "",
+    selectedDateRange: selectedDateRange ?? {},
+    priceRange: { ...priceRange },
+    metaFilters: { ...metaFilters },
+  }), [selectedPlace, selectedDateRange, priceRange, metaFilters]);
+
+  const emitChange = useCallback(
+    (patch = {}, { debounce = false } = {}) => {
+      if (typeof onFiltersChange !== "function") return;
+      const next = { ...snapshot(), ...patch };
+      if (debounce && debounceMs > 0) {
+        clearTimeout(emitTimer.current);
+        emitTimer.current = setTimeout(() => onFiltersChange(next), debounceMs);
+      } else {
+        onFiltersChange(next);
+      }
+    },
+    [onFiltersChange, snapshot, debounceMs]
+  );
+
+  useEffect(() => () => clearTimeout(emitTimer.current), []);
+
+  // Keep your existing date handler; also emit live updates
+  function onDateChange(which, value) {
+    const next = {
+      from: which === "from" ? fromInputDate(value) : selectedDateRange?.from,
+      to: which === "to" ? fromInputDate(value) : selectedDateRange?.to,
+    };
+    setSelectedDateRange(next);       // existing
+    emitChange({ selectedDateRange: next }); // NEW
+  }
 
   return (
     <div
-      className={`rounded-2xl border border-black/10 bg-white p-4 md:p-6 shadow-lg ${className}`}
-      role="dialog"
+      className={`rounded-2xl border border-black/10 bg-white shadow-md ${className}`}
+      role="search"
       aria-label="Filter venues"
     >
-      {/* Header summary (optional) */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-base md:text-lg font-semibold text-[var(--color-text)]">Filters</h3>
-        <div className="text-xs md:text-sm text-gray-600">
-          {hasTempRange
-            ? `Dates: ${fmt(tempDateRange.from)} – ${fmt(tempDateRange.to)}`
-            : "Choose dates"}
-          {priceRange ? ` • Price: $${priceRange.min}–$${priceRange.max}` : ""}
-          {selectedPlace ? ` • Place: ${selectedPlace}` : ""}
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="mt-8 text-left transition-opacity duration-300 space-y-6">
-        {/* Dates */}
-        <section aria-labelledby="filter-dates">
-          <h4 id="filter-dates" className="mb-2 text-sm font-semibold text-gray-700">
-            Dates
-          </h4>
-          <DayPicker
-            mode="range"
-            numberOfMonths={2}
-            defaultMonth={tempDateRange?.from || minDate}
-            selected={tempDateRange}
-            onSelect={onRangeChange}
-            fromDate={minDate}
-            pagedNavigation
-            captionLayout="buttons"
-            className="rounded-lg border border-black/10 p-2"
+      <div className="grid grid-cols-12 gap-4 items-end p-4">
+        {/* Location */}
+        <div className="col-span-12 md:col-span-3">
+          <label className="block text-xs text-gray-600 mb-1">Location</label>
+          <input
+            type="text"
+            placeholder="City, country, zip…"
+            className="w-full rounded-md border border-black/10 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
+            value={selectedPlace ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              setSelectedPlace(v);                         // existing
+              emitChange({ selectedPlace: v }, { debounce: true }); // NEW (debounced while typing)
+            }}
           />
-        </section>
+        </div>
 
-        {/* Price */}
-        <section aria-labelledby="filter-price">
-          <h4 id="filter-price" className="mb-2 text-sm font-semibold text-gray-700">
-            Price range
-          </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="rounded-md border border-black/10 p-3">
-              <label className="block text-xs text-gray-600 mb-1">Min</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  className="w-24 rounded-md border border-black/10 px-2 py-1 text-sm"
-                  value={priceRange?.min ?? 0}
-                  min={0}
-                  max={priceRange?.max ?? 9999}
-                  onChange={(e) =>
-                    setPriceRange?.({
-                      min: Math.min(Number(e.target.value) || 0, priceRange.max),
-                      max: priceRange.max,
-                    })
-                  }
-                />
-                <input
-                  type="range"
-                  className="flex-1"
-                  min={0}
-                  max={priceRange?.max ?? 9999}
-                  value={priceRange?.min ?? 0}
-                  onChange={(e) =>
-                    setPriceRange?.({ min: Number(e.target.value), max: priceRange.max })
-                  }
-                />
-              </div>
+        {/* Dates */}
+        <div className="col-span-6 md:col-span-2">
+          <label className="block text-xs text-gray-600 mb-1">From</label>
+          <input
+            type="date"
+            min={minStr}
+            value={fromVal}
+            onChange={(e) => onDateChange("from", e.target.value)}
+            className="w-full rounded-md border border-black/10 px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
+          />
+        </div>
+        <div className="col-span-6 md:col-span-2">
+          <label className="block text-xs text-gray-600 mb-1">To</label>
+          <input
+            type="date"
+            min={fromVal || minStr}
+            value={toVal}
+            onChange={(e) => onDateChange("to", e.target.value)}
+            className="w-full rounded-md border border-black/10 px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
+          />
+        </div>
+
+        {/* Price Range (dual range + visible numeric inputs) */}
+        <div className="col-span-12 md:col-span-3">
+          <label className="block text-xs text-gray-600 mb-1">Price range</label>
+
+          {/* Slider */}
+          <div className="relative select-none rounded-full bg-slate-200 h-1 mb-3">
+            <div
+              className="absolute h-full rounded-full bg-[color:var(--color-brand-600)]"
+              style={{
+                left: `${(priceRange.min / MAX) * 100}%`,
+                width: `${((priceRange.max - priceRange.min) / MAX) * 100}%`,
+              }}
+            />
+            {/* Min thumb */}
+            <input
+              type="range"
+              min={MIN}
+              max={MAX}
+              step={STEP}
+              value={priceRange.min}
+              onChange={(e) => {
+                const next = {
+                  ...priceRange,
+                  min: Math.min(Number(e.target.value), priceRange.max - STEP),
+                };
+                setPriceRange(next);                   // existing
+                emitChange({ priceRange: next });      // NEW
+              }}
+              className="absolute top-0 h-1 w-full appearance-none bg-transparent
+                         [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4
+                         [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[color:var(--color-brand-700)]
+                         [&::-webkit-slider-thumb]:cursor-pointer
+                         [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4
+                         [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[color:var(--color-brand-700)]
+                         [&::-moz-range-thumb]:cursor-pointer"
+              aria-label="Minimum price"
+            />
+            {/* Max thumb */}
+            <input
+              type="range"
+              min={MIN}
+              max={MAX}
+              step={STEP}
+              value={priceRange.max}
+              onChange={(e) => {
+                const next = {
+                  ...priceRange,
+                  max: Math.max(Number(e.target.value), priceRange.min + STEP),
+                };
+                setPriceRange(next);                   // existing
+                emitChange({ priceRange: next });      // NEW
+              }}
+              className="absolute top-0 h-1 w-full appearance-none bg-transparent
+                         [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4
+                         [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[color:var(--color-brand-700)]
+                         [&::-webkit-slider-thumb]:cursor-pointer
+                         [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4
+                         [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[color:var(--color-brand-700)]
+                         [&::-moz-range-thumb]:cursor-pointer"
+              aria-label="Maximum price"
+            />
+          </div>
+
+          {/* Numeric inputs */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-600">Min</span>
+              <input
+                type="number"
+                value={priceRange.min}
+                min={MIN}
+                max={priceRange.max - STEP}
+                step={STEP}
+                onChange={(e) => {
+                  const next = {
+                    ...priceRange,
+                    min: Math.min(Number(e.target.value) || MIN, priceRange.max - STEP),
+                  };
+                  setPriceRange(next);              // existing
+                  emitChange({ priceRange: next }); // NEW
+                }}
+                className="w-24 rounded-md border border-gray-400 px-2 py-2 text-sm font-semibold text-gray-800 focus:ring-2 focus:ring-brand-600"
+              />
             </div>
-            <div className="rounded-md border border-black/10 p-3">
-              <label className="block text-xs text-gray-600 mb-1">Max</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  className="w-24 rounded-md border border-black/10 px-2 py-1 text-sm"
-                  value={priceRange?.max ?? 9999}
-                  min={priceRange?.min ?? 0}
-                  max={99999}
-                  onChange={(e) =>
-                    setPriceRange?.({
-                      min: priceRange.min,
-                      max: Math.max(Number(e.target.value) || 0, priceRange.min),
-                    })
-                  }
-                />
-                <input
-                  type="range"
-                  className="flex-1"
-                  min={priceRange?.min ?? 0}
-                  max={99999}
-                  value={priceRange?.max ?? 9999}
-                  onChange={(e) =>
-                    setPriceRange?.({ min: priceRange.min, max: Number(e.target.value) })
-                  }
-                />
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-600">Max</span>
+              <input
+                type="number"
+                value={priceRange.max}
+                min={priceRange.min + STEP}
+                max={MAX}
+                step={STEP}
+                onChange={(e) => {
+                  const next = {
+                    ...priceRange,
+                    max: Math.max(Number(e.target.value) || MAX, priceRange.min + STEP),
+                  };
+                  setPriceRange(next);              // existing
+                  emitChange({ priceRange: next }); // NEW
+                }}
+                className="w-24 rounded-md border border-gray-400 px-2 py-2 text-sm font-semibold text-gray-800 focus:ring-2 focus:ring-brand-600"
+              />
             </div>
           </div>
-        </section>
+        </div>
 
-        {/* Amenities / Meta */}
-        <section aria-labelledby="filter-amenities">
-          <h4 id="filter-amenities" className="mb-2 text-sm font-semibold text-gray-700">
-            Amenities
-          </h4>
-          <div className="flex flex-wrap gap-3">
+        {/* Amenities inline (one line, wraps if needed) */}
+        <div className="col-span-12">
+          <div className="flex flex-wrap items-center gap-6 mt-2">
             {[
               ["wifi", "Wi-Fi"],
               ["parking", "Parking"],
               ["breakfast", "Breakfast"],
               ["pets", "Pets allowed"],
-            ].map(([key, label]) => (
-              <label
-                key={key}
-                className="inline-flex items-center gap-2 rounded-full border border-black/10 px-3 py-1.5 text-sm cursor-pointer select-none"
-              >
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-black/20"
-                  checked={!!metaFilters?.[key]}
-                  onChange={(e) =>
-                    setMetaFilters?.((prev) => ({ ...prev, [key]: e.target.checked }))
-                  }
-                />
-                <span>{label}</span>
-              </label>
-            ))}
+            ].map(([key, label]) => {
+              const id = `amenity-${key}`;
+              const checked = !!metaFilters?.[key];
+              return (
+                <label key={key} htmlFor={id} className="inline-flex items-center cursor-pointer select-none">
+                  <span className="relative">
+                    <input
+                      id={id}
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={checked}
+                      onChange={(e) => {
+                        const nextMeta = { ...metaFilters, [key]: e.target.checked };
+                        setMetaFilters(nextMeta);                 // existing
+                        emitChange({ metaFilters: nextMeta });    // NEW
+                      }}
+                    />
+                    {/* Track */}
+                    <span
+                      className="block w-11 h-6 rounded-full bg-gray-200 border border-black/10
+                                 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--color-brand-300)]
+                                 peer-checked:bg-[color:var(--color-brand-600)]"
+                    />
+                    {/* Thumb */}
+                    <span
+                      className="absolute top-0.5 left-[2px] w-5 h-5 rounded-full bg-white border border-gray-300
+                                 transition-all duration-300 ease-in-out shadow
+                                 peer-checked:translate-x-[22px] peer-checked:border-white"
+                    />
+                  </span>
+                  <span className="ml-2 text-sm">{label}</span>
+                </label>
+              );
+            })}
           </div>
-        </section>
-
-        {/* Location */}
-        <section aria-labelledby="filter-location">
-          <h4 id="filter-location" className="mb-2 text-sm font-semibold text-gray-700">
-            Location
-          </h4>
-          <input
-            id="cal-location-input"
-            placeholder="Search by city, country, zip..."
-            className="w-full rounded-lg border border-black/10 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
-            type="text"
-            value={selectedPlace ?? ""}
-            onChange={(e) => setSelectedPlace?.(e.target.value)}
-          />
-        </section>
-
-        {/* Actions */}
-        <div className="pt-1 flex justify-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              if (hasTempRange) setSelectedDateRange?.(tempDateRange);
-              onClose?.();
-            }}
-            disabled={!hasTempRange}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-semibold
-                       rounded-full border border-[var(--color-brand-600)]
-                       bg-[var(--color-brand-600)] text-white shadow-sm
-                       hover:bg-[var(--color-brand-700)] hover:shadow-md active:scale-95 transition
-                       focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand-500)]
-                       focus-visible:ring-offset-2 focus-visible:ring-offset-white
-                       disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Apply
-          </button>
-
-          {typeof onClose === "function" && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-medium
-                         hover:bg-black/[.03] transition
-                         focus-visible:outline-none focus-visible:ring-2
-                         focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-            >
-              Close
-            </button>
-          )}
         </div>
       </div>
     </div>
