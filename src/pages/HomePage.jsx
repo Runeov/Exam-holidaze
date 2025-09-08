@@ -3,7 +3,6 @@
 /** biome-ignore-all lint/a11y/useButtonType: <explanation> */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listVenues } from "../api/venues";
-import BrandedCalendar from "../components/BrandedCalendar";
 import CalendarDropdown from "../components/CalendarDropdown";
 import DiscoverMoreButton from "../components/DiscoverMoreButton";
 import FilterBadge from "../components/FilterBadge";
