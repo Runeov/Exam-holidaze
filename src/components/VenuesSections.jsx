@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 import { hasBookingConflict } from "../utils/dates";
 import { firstGoodMedia, labelForLocation } from "../utils/media";
 import SmartImage from "./SmartImage";
-import Defer from "../components/Defer"; // add this import
+
 
 function usePrefersReducedMotion() {
   const [prefers, setPrefers] = useState(false);
@@ -25,19 +25,7 @@ function usePrefersReducedMotion() {
   return prefers;
 }
 
-function Defer({ delay = 0, children }) {
-  const prefersReducedMotion = usePrefersReducedMotion();
-  const [ready, setReady] = useState(delay === 0 || prefersReducedMotion);
-  useEffect(() => {
-    if (prefersReducedMotion || delay === 0) {
-      setReady(true);
-      return;
-    }
-    const t = setTimeout(() => setReady(true), delay);
-    return () => clearTimeout(t);
-  }, [delay, prefersReducedMotion]);
-  return ready ? children : null;
-}
+
 // ——— helpers live OUTSIDE the component (so they don't get re-created every render)
 function normalizeLocation(loc) {
   if (!loc) return "";
@@ -203,15 +191,18 @@ const VenuesSections = forwardRef(function VenuesSections(
                     </div>
                     {!unavailable && (
                       <div className="mt-3 flex justify-center">
-                        <button
-                          type="button"
-                          className="mt-2 rounded-full px-4 py-1.5 text-sm font-medium text-star-twinkle bg-[var(--color-holidaze-card-500)] hover:bg-[var(--color-brand-100)] active:scale-95 transition"
-                          onClick={() => {
-                            console.log("Booking for:", v.name);
-                          }}
-                        >
-                          Book now
-                        </button>
+                       <button
+  type="button"
+  className="mt-2 rounded-full px-4 py-1.5 text-sm font-medium 
+             text-star-twinkle bg-[var(--color-holidaze-card-500)] 
+             hover:bg-[var(--color-brand-100)] active:scale-95 transition
+             [text-shadow:_0_1px_2px_rgba(0,0,0,0.4)]"
+  onClick={() => {
+    console.log("Booking for:", v.name);
+  }}
+>
+  Book now
+</button>
                       </div>
                     )}
                   </div>

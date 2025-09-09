@@ -2,8 +2,10 @@
 /** biome-ignore-all lint/a11y/useSemanticElements: <explanation> */
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import SearchCTAButton from "../components/SearchCTAButton";
 
-export default function SearchBar({ initialQuery = "" }) {
+// ---------------- SearchBar ----------------
+export function SearchBar({ initialQuery = "" }) {
   const [q, setQ] = useState(initialQuery);
   const navigate = useNavigate();
 
@@ -48,6 +50,38 @@ export default function SearchBar({ initialQuery = "" }) {
       >
         Search
       </button>
+    </form>
+  );
+}
+
+// ---------------- FilterForm ----------------
+export function FilterForm({
+  selectedPlace,
+  setSelectedPlace,
+  selectedDateRange,
+  setSelectedDateRange,
+  priceRange,
+  setPriceRange,
+  metaFilters,
+  setMetaFilters,
+}) {
+  return (
+    <form className="space-y-4">
+      {/* Location input */}
+      {/* Date pickers */}
+      {/* Price slider */}
+      {/* Amenities checkboxes */}
+
+      {/* CTA at bottom */}
+      <div className="mt-6 flex justify-end">
+        <SearchCTAButton
+          selectedPlace={selectedPlace}
+          selectedDateRange={selectedDateRange}
+          priceRange={priceRange}
+          metaFilters={metaFilters}
+          className="w-full sm:w-auto"
+        />
+      </div>
     </form>
   );
 }

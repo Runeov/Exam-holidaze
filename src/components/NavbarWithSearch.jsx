@@ -19,6 +19,10 @@ export default function NavbarWithSearch() {
     pets: false,
   });
 
+
+
+
+  
   const loggedIn = typeof isAuthed === "boolean" ? isAuthed : Boolean(user || profile || token);
   const isManager = loggedIn && profile?.venueManager;
   const [state, setState] = useState({ loading: true, error: "", rows: [] });

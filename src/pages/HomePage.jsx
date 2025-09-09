@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { listVenues } from "../api/venues";
 import LiveTravelTips from "../components/LiveTravelTips";
 import MediaCarousel from "../components/MediaCarousel";
-import SmartImage from "../components/SmartImage";
 import VenuesSections from "../components/VenuesSections";
 import { firstGoodMedia, generatePlaceInfo, hasGoodMedia, labelForLocation } from "../utils/media";
 import LandingSection from "../sections/LandingSection";
@@ -77,10 +76,6 @@ const [showFilters, setShowFilters] = useState(false);
 // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 const handleReachCount = React.useCallback((count, cause) => {
   if (cause === "io" && count >= 12 && !showPrompt) {
-    // Defer so we don't update HomePage while MediaCarousel is rendering
-    // Any of these is fine; choose one:
-    // queueMicrotask(() => setShowPrompt(true));
-    // requestAnimationFrame(() => setShowPrompt(true));
     setTimeout(() => setShowPrompt(true), 0);
   }
 }, [showPrompt, setShowPrompt]);
@@ -256,19 +251,19 @@ return (
 <section className="relative">
     <div className="max-w-5xl mx-auto">
       <MediaCarousel
-        images={heroSlides}
-        progressive
-        initial={6}
-        step={6}
-        afterIdle={6}
-        onReachCount={(count, cause) => {
-          if (cause === "io" && count >= 12 && !showPrompt) setShowPrompt(true);
-        }}
-        onShowMore={(loc) => {
-          if (typeof loc === "string" && loc.trim()) setSelectedPlace(loc.trim());
-          setCalendarOpen(true);
-        }}
-      />
+  heroSrc="/images/holidaze_optimized_mobile-min.webp"
+  heroAlt="A wonderful place under the sun"
+  images={heroSlides}
+  progressive
+  initial={6}
+  step={6}
+  afterIdle={0}
+  onReachCount={handleReachCount}
+  onShowMore={(loc) => {
+    if (typeof loc === "string" && loc.trim()) setSelectedPlace(loc.trim());
+    setCalendarOpen(true);
+  }}
+/>
     </div>
 </section>
     <div className="mx-auto max-w-7xl px-4 sm:px-6 mt-6">

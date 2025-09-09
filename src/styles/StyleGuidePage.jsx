@@ -1,7 +1,6 @@
 import { Buttons } from "./Buttons";
 import { Colors } from "./Colors";
 import { Calendar } from "./components/Calendar";
-import { TextBoxes } from "./components/TextBoxes";
 import { Typography } from "./Typography";
 
 export default function StyleGuidePage() {

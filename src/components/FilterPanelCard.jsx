@@ -3,8 +3,9 @@
 /** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
 /** biome-ignore-all lint/a11y/noLabelWithoutControl: <explanation> */
 import React, { useEffect } from "react";
+import SearchCTAButton from "../components/SearchCTAButton";
 
-/* Helpers kept local to avoid cross-file coupling */
+/* Helpers kept (inputs removed as requested, but we retain helpers to avoid cross-file coupling) */
 function toInputDate(d) {
   if (!d) return "";
   const dt = typeof d === "string" ? new Date(d) : d;
@@ -47,8 +48,7 @@ export default function FilterPanelCard({
       const today = atLocalMidnight();
       setSelectedDateRange({ from: today, to: today });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once to avoid loops
+  }, [selectedDateRange, setSelectedDateRange]);
 
   if (!open) return null;
 
@@ -56,6 +56,7 @@ export default function FilterPanelCard({
   const MAX = 10000;
   const STEP = 50;
 
+  // (Date inputs removed; minStr/fromVal/toVal + onDateChange are unused now but left here if you re-add inputs later)
   const minStr = toInputDate(minDate);
   const fromVal = toInputDate(selectedDateRange?.from);
   const toVal = toInputDate(selectedDateRange?.to);
@@ -65,11 +66,10 @@ export default function FilterPanelCard({
       from: which === "from" ? fromInputDate(value) : selectedDateRange?.from,
       to: which === "to" ? fromInputDate(value) : selectedDateRange?.to,
     };
-    setSelectedDateRange(next); // live filtering (unchanged outputs)
+    setSelectedDateRange(next);
   }
 
-  // Improve dual-range interaction:
-  // bring the "closer" thumbs to front when near to avoid one blocking the other.
+  // Improve dual-range interaction: bring the "closer" thumbs to front when near.
   const closeTogether = (priceRange?.max ?? MAX) - (priceRange?.min ?? MIN) <= STEP * 2;
   const minZ = closeTogether ? 40 : 20;
   const maxZ = closeTogether ? 20 : 40;
@@ -98,37 +98,8 @@ export default function FilterPanelCard({
           />
         </div>
 
-        {/* Dates */}
-        <div className="col-span-6 md:col-span-2">
-          <label htmlFor="filter-date-from" className="block text-xs text-gray-800 mb-1">
-            From
-          </label>
-          <input
-            id="filter-date-from"
-            type="date"
-            min={minStr}
-            value={fromVal}
-            onChange={(e) => onDateChange("from", e.target.value)}
-            className="w-full rounded-md border border-black/10 bg-white px-2 py-2 text-sm text-gray-900
-                       focus:outline-none focus-visible:ring-2
-                       focus-visible:ring-[color:var(--color-brand-600)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-          />
-        </div>
-        <div className="col-span-6 md:col-span-2">
-          <label htmlFor="filter-date-to" className="block text-xs text-gray-800 mb-1">
-            To
-          </label>
-          <input
-            id="filter-date-to"
-            type="date"
-            min={fromVal || minStr}
-            value={toVal}
-            onChange={(e) => onDateChange("to", e.target.value)}
-            className="w-full rounded-md border border-black/10 bg-white px-2 py-2 text-sm text-gray-900
-                       focus:outline-none focus-visible:ring-2
-                       focus-visible:ring-[color:var(--color-brand-600)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-          />
-        </div>
+        {/* Dates — inputs removed on request. Keep calendar elsewhere if needed. */}
+        {/* (No From/To <input type="date"> fields here) */}
 
         {/* Price Range (dual range + numeric inputs) */}
         <div className="col-span-12 md:col-span-3">
@@ -279,7 +250,7 @@ export default function FilterPanelCard({
         </div>
 
         {/* Actions */}
-        <div className="col-span-12 pt-1 flex justify-center gap-2">
+        <div className="col-span-12 pt-1 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => onClose?.()}
@@ -290,6 +261,16 @@ export default function FilterPanelCard({
           >
             Close
           </button>
+
+          <div className="flex justify-end">
+            <SearchCTAButton
+              selectedPlace={selectedPlace}
+              selectedDateRange={selectedDateRange}
+              priceRange={priceRange}
+              metaFilters={metaFilters}
+              className="w-full sm:w-auto"
+            />
+          </div>
         </div>
       </div>
     </div>
