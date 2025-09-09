@@ -203,17 +203,18 @@ export default function MediaCarousel({
             ].join(" ")}
             aria-hidden={firstLoaded ? "true" : "false"}
           >
-            <SmartImage
-              src={heroSrc}
-              alt={heroAlt}
-              className={["h-full w-full object-cover", heroClassName].filter(Boolean).join(" ")}
-              eager
-              fetchPriority="high"
-              srcSet={heroSrcSet}
-              sizes={heroSizes}
-              width={1600}
-              height={1000}
-            />
+         <SmartImage
+  src={m.url}
+  url={m.url}
+  alt={m.alt || `Image ${i + 1}`}
+  className="h-full w-full object-cover
+             object-[65%_20%] sm:object-[70%_20%] md:object-[72%_18%] lg:object-[75%_15%]"
+  eager={false}
+  decoding="async"
+  fetchPriority="low"
+  width={1600}
+  height={1000}
+/>
           </div>
         )}
 
@@ -252,8 +253,9 @@ export default function MediaCarousel({
   className="h-full w-full object-cover
              object-[65%_20%] sm:object-[70%_20%] md:object-[72%_18%] lg:object-[75%_15%]"
   eager={i === 0}
-  decoding="async"
-/>
+  decoding="async" fetchPriority="low" width={1600} height={1000} />
+
+
 
 
                 {(m.name || m.location) && (

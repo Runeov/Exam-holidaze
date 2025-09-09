@@ -5,17 +5,15 @@ export default function SmartImage({
   url,
   alt = "",
   className = "",
-  eager = false,
-  width,
-  height,
+  eager = false,                 // only true for the hero
+  fetchPriority,                 // "high" for hero, "low" for cards
+  width = 1600,                  // intrinsic size -> no CLS
+  height = 1000,
   srcSet,
   sizes,
-  fetchPriority, // "high" only for the one LCP image
-  placeholderSrc, // optional tiny blur img
   ...rest
 }) {
   const finalSrc = src || url;
-
   return (
     <img
       src={finalSrc}
@@ -23,9 +21,9 @@ export default function SmartImage({
       className={className}
       loading={eager ? "eager" : "lazy"}
       decoding="async"
-      fetchpriority={fetchPriority}
-      width={width ?? 1600}
-      height={height ?? 1000}
+      fetchpriority={fetchPriority ?? (eager ? "high" : "low")}
+      width={width}
+      height={height}
       srcSet={srcSet}
       sizes={sizes}
       {...rest}
