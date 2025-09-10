@@ -1,10 +1,10 @@
-
+// src/pages/HomePage.jsx (or wherever your HomePage lives)
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listVenues } from "../api/venues";
 import LiveTravelTips from "../components/LiveTravelTips";
 import MediaCarousel from "../components/MediaCarousel";
 import VenuesSections from "../components/VenuesSections";
-import { firstGoodMedia, generatePlaceInfo, hasGoodMedia, labelForLocation } from "../utils/media";
+import { firstGoodMedia, hasGoodMedia } from "../utils/media";
 import LandingSection from "../sections/LandingSection";
 import FilterPanelCard from "../components/FilterPanelCard";
 import { useStableId } from "../utils/uid";
@@ -29,14 +29,17 @@ export default function HomePage() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const calWrapRef = useRef(null);
   const datesBtnRef = useRef(null);
-const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const lastFetchedPage = useRef(1);
   const isDraining = useRef(false);
   const seenIds = useRef(new Set());
-const availableRef = useRef(null);
-const [showQuickTip, setShowQuickTip] = useState(true);   // show tip on page load
-const [showTravelTips, setShowTravelTips] = useState(false); // reveal after Show more
-const [hasRevealedVenues, setHasRevealedVenues] = useState(false);
+  const availableRef = useRef(null);
+
+  // UX flags
+  const [showQuickTip, setShowQuickTip] = useState(true);     // show tip on first load
+  const [showTravelTips, setShowTravelTips] = useState(false); // reveal after Show more
+  const [hasRevealedVenues, setHasRevealedVenues] = useState(false); // gate venues after click
+
   const PAGE_LIMIT = 100;
 
   const identityKey = (v) =>
@@ -75,13 +78,15 @@ const [hasRevealedVenues, setHasRevealedVenues] = useState(false);
     [PAGE_LIMIT],
   );
 
-// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
-const handleReachCount = React.useCallback((count, cause) => {
-  if (cause === "io" && count >= 12 && !showPrompt) {
-    setTimeout(() => setShowPrompt(true), 0);
-  }
-}, [showPrompt, setShowPrompt]);
-
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  const handleReachCount = React.useCallback(
+    (count, cause) => {
+      if (cause === "io" && count >= 12 && !showPrompt) {
+        setTimeout(() => setShowPrompt(true), 0);
+      }
+    },
+    [showPrompt, setShowPrompt],
+  );
 
   const fetchAllRemaining = async () => {
     if (isDraining.current || !hasMorePages) return;
@@ -118,8 +123,7 @@ const handleReachCount = React.useCallback((count, cause) => {
     }
   };
 
-
-  
+  // Close calendar on outside click / Esc
   useEffect(() => {
     if (!calendarOpen) return;
     function onDocClick(e) {
@@ -139,12 +143,14 @@ const handleReachCount = React.useCallback((count, cause) => {
     };
   }, [calendarOpen]);
 
+  // Initial fetch
   useEffect(() => {
     setLoading(true);
     seenIds.current = new Set();
     fetchVenues(1);
   }, [fetchVenues]);
 
+  // Build hero slides from venues
   const heroSlides = useMemo(() => {
     const toSlide = (v, i) => {
       const m = firstGoodMedia(v);
@@ -169,42 +175,34 @@ const handleReachCount = React.useCallback((count, cause) => {
 
   const suggestionLocation = useMemo(() => heroSlides[0]?.location || "", [heroSlides]);
 
+  // Helpers
+  const toPlaceToken = (x) => {
+    const raw = typeof x === "string" ? x : x?.name ?? "";
+    return String(raw).trim().toLowerCase();
+  };
 
+  function handleShowMore(loc) {
+    const target = toPlaceToken(loc);
+    if (!target) return;
 
-// If you don't already have this:
-const toPlaceToken = (x) => {
-  const raw = typeof x === "string" ? x : x?.name ?? "";
-  return String(raw).trim().toLowerCase();
-};
+    setSelectedPlace(target);
+    setHasRevealedVenues(true); // reveal venues only after click
+    setShowQuickTip(false);     // hide the initial quick tip once engaged
+    setShowTravelTips(true);    // show travel tips after click
+    setCalendarOpen(true);
 
-function handleShowMore(loc) {
-  const target = toPlaceToken(loc);
-  if (!target) return;
-
-  setSelectedPlace(target);
-  setHasRevealedVenues(true);   // ← move venue reveal here
-  setShowQuickTip(false);       // hide tip after first click
-  setShowTravelTips(true);      // show travel tips after click
-  setCalendarOpen(true);
-
-  if (hasMorePages && !isDraining.current && typeof fetchAllRemaining === "function") {
-    const maybePromise =
-      fetchAllRemaining.length > 0
-        ? fetchAllRemaining({ place: target })
-        : fetchAllRemaining();
-    void maybePromise;
+    if (hasMorePages && !isDraining.current && typeof fetchAllRemaining === "function") {
+      const maybePromise =
+        fetchAllRemaining.length > 0 ? fetchAllRemaining({ place: target }) : fetchAllRemaining();
+      void maybePromise;
+    }
   }
-}
 
   const normalizeUrl = (u) => {
     if (!u) return "";
     let s = String(u).trim();
     if (s.startsWith("//")) s = "https:" + s;
-    if (
-      typeof window !== "undefined" &&
-      window.location?.protocol === "https:" &&
-      s.startsWith("http:")
-    ) {
+    if (typeof window !== "undefined" && window.location?.protocol === "https:" && s.startsWith("http:")) {
       s = s.replace(/^http:/i, "https:");
     }
     return s;
@@ -232,119 +230,119 @@ function handleShowMore(loc) {
     }
   };
 
-return (
-  <main className="space-y-16 pb-16 px-0 sm:px-0 md:px-0 lg:px-[var(--page-gutter-wide)]">
-    <section className="relative bg-brand-50 rounded-xl shadow-sm mb-12 flex items-start">
-      <div className="w-full text-center pt-4 md:pt-8 pb-12 space-y-0 px-0 sm:px-0 md:px-0 lg:px-[var(--page-gutter-wide)]">
-        <h1 className="text-4xl md:text-5xl font-bold leading-tight text-star-twinkle">
-          Holidaze
-        </h1>
-        <div className="space-y-0">
-          <h2 className="mx-auto w-full max-w-md text-center text-lg md:text-xl font-semibold text-white/80">
-            Wander Freely, Travel Boldly
-          </h2>
+  return (
+    <main className="space-y-16 pb-16 px-0 sm:px-0 md:px-0 lg:px-[var(--page-gutter-wide)]">
+      <section className="relative bg-brand-50 rounded-xl shadow-sm mb-12 flex items-start">
+        <div className="w-full text-center pt-4 md:pt-8 pb-12 space-y-0 px-0 sm:px-0 md:px-0 lg:px-[var(--page-gutter-wide)]">
+          <h1 className="text-4xl md:text-5xl font-bold leading-tight text-star-twinkle">Holidaze</h1>
+          <div className="space-y-0">
+            <h2 className="mx-auto w-full max-w-md text-center text-lg md:text-xl font-semibold text-white/80">
+              Wander Freely, Travel Boldly
+            </h2>
+          </div>
         </div>
-      </div>
-    </section>
-<section className="relative">
-    <div className="max-w-5xl mx-auto">
-    <MediaCarousel
-  heroSrc="/images/holidaze_optimized_mobile-min.webp"
-  heroAlt="A wonderful place under the sun"
-  images={heroSlides}
-  progressive
-  initial={6}
-  step={6}
-  afterIdle={0}
-  onReachCount={handleReachCount}
-  onShowMore={handleShowMore}   // ← route through the unified handler
-/>
+      </section>
 
-
-    </div>
-
-
-{showQuickTip && (
-    <div className="max-w-5xl mx-auto mt-4 px-4">
-      <div className="rounded-xl border border-black/10 bg-white/70 backdrop-blur p-4 md:p-5 flex items-center justify-between gap-3">
-        <p className="text-sm md:text-base text-gray-800">
-          Quick tip: <span className="font-semibold">Scroll</span> the venues and click <span className="font-semibold">Show more</span> to explore destinations.
-        </p>
-        <button
-          type="button"
-          onClick={() => handleShowMore(suggestionLocation || selectedPlace || "Spain")}
-          className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm md:text-base font-semibold
-                     bg-[color:var(--color-brand-600)] text-white hover:bg-[color:var(--color-brand-700)]
-                     focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--color-brand-500)] focus-visible:ring-offset-2"
-          aria-label="Show more venues"
-        >
-          Show more ✨
-        </button>
-      </div>
-    </div>
-  )}
-</section>
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 mt-6">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 -mt-16 relative z-10">
-       <div className="-mt-8 md:-mt-10 relative z-10 px-2 md:px-2">
-          {/* Filter panel card (replaces inline CalendarDropdown) */}
-          <FilterPanelCard
-            open={calendarOpen}
-            onClose={() => setCalendarOpen(false)}
-            selectedDateRange={selectedDateRange}
-            setSelectedDateRange={setSelectedDateRange}
-            tempDateRange={tempDateRange}
-            setTempDateRange={setTempDateRange}
-            priceRange={priceRange}
-            setPriceRange={setPriceRange}
-            metaFilters={metaFilters}
-            setMetaFilters={setMetaFilters}
-            selectedPlace={selectedPlace}
-            setSelectedPlace={setSelectedPlace}
-            className="max-w-5xl mx-auto"
+      <section className="relative">
+        <div className="max-w-5xl mx-auto">
+          <MediaCarousel
+            heroSrc="/images/holidaze_optimized_mobile-min.webp"
+            heroAlt="A wonderful place under the sun"
+            images={heroSlides}
+            progressive
+            initial={6}
+            step={6}
+            afterIdle={0}
+            onReachCount={handleReachCount}
+            onShowMore={handleShowMore}
           />
         </div>
-      </div>
-    </div>
 
-  {hasRevealedVenues && (selectedPlace || (selectedDateRange?.from && selectedDateRange?.to)) && (
-  <>
-    <VenuesSections
-      ref={availableRef}
-      venues={venues}
-      selectedPlace={selectedPlace}
-      selectedDateRange={selectedDateRange}
-      loading={loading}
-      identityKey={identityKey}
-      pickImageUrl={pickImageUrl}
-      priceRange={priceRange}
-      metaFilters={metaFilters}
-    />
-  </>
-)}
+        {showQuickTip && (
+          <div className="max-w-5xl mx-auto mt-4 px-4">
+            <div className="rounded-xl border border-black/10 bg-white/70 backdrop-blur p-4 md:p-5 flex items-center justify-between gap-3">
+              <p className="text-sm md:text-base text-gray-800">
+                Quick tip: <span className="font-semibold">Scroll</span> the venues and click{" "}
+                <span className="font-semibold">Show more</span> to explore destinations.
+              </p>
+              <button
+                type="button"
+                onClick={() => handleShowMore(suggestionLocation || selectedPlace || "Spain")}
+                className="inline-flex items-center justify-center rounded-full px-4 py-2 text-sm md:text-base font-semibold
+                           bg-[color:var(--color-brand-600)] text-white hover:bg-[color:var(--color-brand-700)]
+                           focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--color-brand-500)] focus-visible:ring-offset-2"
+                aria-label="Show more venues"
+              >
+                Show more ✨
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
 
-
-  {showTravelTips && (
-  <section className="max-w-5xl mx-auto w-full mt-12">
-    <div className="rounded-2xl bg-white shadow-sm border border-black/10 p-6 md:p-8 space-y-6">
-      <h1 className="text-2xl md:text-3xl font-bold text-brand-700 text-center">
-        Travel guidance for your trip
-      </h1>
-      <p className="text-text-muted text-center max-w-2xl mx-auto">
-        Helpful insights and recommendations tailored to your destination.
-      </p>
-      <div className="grid grid-cols-1 gap-6 md:gap-8">
-        <div className="rounded-2xl bg-white shadow-sm border border-black/5 p-6 md:p-8 text-left">
-          <h2 className="text-lg md:text-xl font-semibold text-brand-700 mb-3">
-            {`Travel tips ${selectedPlace ? `for ${selectedPlace}` : ""}`}
-          </h2>
-          <div className="text-text-muted leading-relaxed">
-            <LiveTravelTips location={selectedPlace || "Spain"} />
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 mt-6">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 -mt-16 relative z-10">
+          <div className="-mt-8 md:-mt-10 relative z-10 px-2 md:px-2">
+            {/* Filter panel card */}
+            <FilterPanelCard
+              open={calendarOpen}
+              onClose={() => setCalendarOpen(false)}
+              selectedDateRange={selectedDateRange}
+              setSelectedDateRange={setSelectedDateRange}
+              tempDateRange={tempDateRange}
+              setTempDateRange={setTempDateRange}
+              priceRange={priceRange}
+              setPriceRange={setPriceRange}
+              metaFilters={metaFilters}
+              setMetaFilters={setMetaFilters}
+              selectedPlace={selectedPlace}
+              setSelectedPlace={setSelectedPlace}
+              className="max-w-5xl mx-auto"
+            />
           </div>
         </div>
       </div>
-    </div>
-  </section>
-)}
-  </main>
-);}
+
+      {/* Venues render ONLY after Show more AND with a place or a full date range */}
+      {hasRevealedVenues && (selectedPlace || (selectedDateRange?.from && selectedDateRange?.to)) && (
+        <>
+          <VenuesSections
+            ref={availableRef}
+            venues={venues}
+            selectedPlace={selectedPlace}
+            selectedDateRange={selectedDateRange}
+            loading={loading}
+            identityKey={identityKey}
+            pickImageUrl={pickImageUrl}
+            priceRange={priceRange}
+            metaFilters={metaFilters}
+          />
+        </>
+      )}
+
+      {/* Travel tips appear after Show more */}
+      {showTravelTips && (
+        <section className="max-w-5xl mx-auto w-full mt-12">
+          <div className="rounded-2xl bg-white shadow-sm border border-black/10 p-6 md:p-8 space-y-6">
+            <h1 className="text-2xl md:text-3xl font-bold text-brand-700 text-center">
+              Travel guidance for your trip
+            </h1>
+            <p className="text-text-muted text-center max-w-2xl mx-auto">
+              Helpful insights and recommendations tailored to your destination.
+            </p>
+            <div className="grid grid-cols-1 gap-6 md:gap-8">
+              <div className="rounded-2xl bg-white shadow-sm border border-black/5 p-6 md:p-8 text-left">
+                <h2 className="text-lg md:text-xl font-semibold text-brand-700 mb-3">
+                  {`Travel tips ${selectedPlace ? `for ${selectedPlace}` : ""}`}
+                </h2>
+                <div className="text-text-muted leading-relaxed">
+                  <LiveTravelTips location={selectedPlace || "Spain"} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+    </main>
+  );
+}
