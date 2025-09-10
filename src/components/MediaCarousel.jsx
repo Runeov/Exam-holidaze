@@ -1,25 +1,19 @@
 // src/components/MediaCarousel.jsx
+/** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
 /** biome-ignore-all lint/a11y/useSemanticElements: <explanation> */
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import SmartImage from "./SmartImage";
 
 /**
- * MediaCarousel
+ * WHY this change?
+ * On ≥lg, each slide used `w-full` while the stage spacer used `lg:w-[82vw]`,
+ * creating a width mismatch. The slide became wider than the visible stage,
+ * so you could horizontally scroll *inside the same slide* instead of seeing a proper scale.
  *
- * Props:
- * - images: Array<{ url: string, alt?: string, name?: string, location?: string, subLocation?: string }>
- * - progressive?: boolean
- * - initial?: number
- * - step?: number
- * - afterIdle?: number
- * - onReachCount?: (count:number, cause:'io'|'manual'|'idle') => void
- * - onShowMore?: (location?: string) => void
- * - heroSrc?: string                     // local, optimized hero (LCP)
- * - heroAlt?: string
- * - heroSrcSet?: string                  // "/img-800.webp 800w, /img-1200.webp 1200w, ..."
- * - heroSizes?: string                   // "100vw" etc.
- * - heroClassName?: string               // extra classes; size is handled by spacer
+ * Fix: constrain the carousel's scroll container to the exact same responsive width
+ * as the spacer and make each slide `w-full` of that constrained container.
  */
+
 export default function MediaCarousel({
   images = [],
   progressive = true,
@@ -179,22 +173,21 @@ export default function MediaCarousel({
     };
   }, [shown.length]);
 
-  // ---------------- RETURN ----------------
+  // Shared responsive width for spacer, hero, and scroller.
+  const stageWidth = "w-[92vw] md:w-[86vw] lg:w-[82vw] max-w-[1400px]";
+
   return (
-    <div
-      className="w-full text-center pt-4 md:pt-8 pb-12 space-y-0 
-                 px-0 sm:px-0 md:px-0 lg:px-[var(--page-gutter-wide)]"
-    >
+    <div className="w-full text-center pt-4 md:pt-8 pb-12 space-y-0 px-0 sm:px-0 md:px-0 lg:px-[var(--page-gutter-wide)]">
       {/* Stage reserves height to prevent CLS; hero + scroller are overlayed */}
-      <div className="relative">
-        {/* Spacer: same aspect/width as a card so the stage has height */}
-        <div className="invisible pointer-events-none aspect-[16/10] w-[92vw] md:w-[86vw] lg:w-[82vw] max-w-[1400px] mx-auto" />
+      <div className="relative overflow-x-hidden">
+        {/* Spacer: exact visible stage width */}
+       <div className="invisible pointer-events-none w-full h-[500px] max-w-[1400px] mx-auto" />
 
         {/* HERO (LCP) — absolutely positioned, fades out */}
         {heroSrc && (
           <div
             className={[
-              "absolute inset-0 flex items-center justify-center",
+              "absolute inset-0 left-8 flex items-center justify-center",
               firstLoaded
                 ? reduceMotion
                   ? "opacity-0"
@@ -203,120 +196,123 @@ export default function MediaCarousel({
             ].join(" ")}
             aria-hidden={firstLoaded ? "true" : "false"}
           >
-         <SmartImage
+            <div className={["h-full mx-auto", stageWidth].join(" ")}>
+              <SmartImage
+                src={heroSrc}
+                url={heroSrc}
+                alt={heroAlt}
+                srcSet={heroSrcSet}
+                sizes={heroSizes}
+                className={[
+                  "h-full w-full object-cover",
+                  "object-[65%_20%] sm:object-[70%_20%] md:object-[72%_18%] lg:object-[75%_15%]",
+                  heroClassName,
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                eager={false}
+                decoding="async"
+                fetchPriority="low"
+                width={1600}
+                height={1000}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* SCROLLER — absolutely positioned; constrained to same width as spacer */}
+        <div className="absolute inset-0 left-8">
+          <div
+            ref={scroller}
+            id="hero-scroller"
+            className={[
+              stageWidth,
+              "h-full mx-auto flex gap-2 overflow-x-auto snap-x snap-mandatory scrollbar-hide",
+              firstLoaded ? "opacity-100 translate-x-0" : reduceMotion ? "opacity-0" : "opacity-0 translate-x-6",
+              "transition-all duration-500 ease-out",
+            ].join(" ")}
+            /* biome-ignore lint/a11y/noNoninteractiveTabindex: <explanation> */
+            tabIndex={0}
+            style={firstLoaded || reduceMotion ? undefined : { willChange: "transform, opacity" }}
+          >
+            {shown.map((m, i) => (
+              <div
+                key={i}
+                className="shrink-0 snap-start first:snap-always"
+                style={i === 0 ? { scrollSnapStop: "always" } : undefined}
+              >
+                <div
+  
+  className="relative h-[500px] min-h-[500px] max-h-[500px]
+             w-[100%] max-w-[1400px] mx-auto
+             rounded-xl overflow-hidden bg-muted"
+>
+               <SmartImage
   src={m.url}
   url={m.url}
   alt={m.alt || `Image ${i + 1}`}
-  className="h-full w-full object-cover
-             object-[65%_20%] sm:object-[70%_20%] md:object-[72%_18%] lg:object-[75%_15%]"
-  eager={false}
+  className="h-full min-h-[500px] max-h-[500px] w-full object-cover
+             object-center sm:object-center md:object-center lg:object-center"
+  eager={i === 0}
   decoding="async"
   fetchPriority="low"
   width={1600}
   height={1000}
 />
-          </div>
-        )}
 
-        {/* SCROLLER — absolutely positioned, slides in; occupies the same stage box */}
-        <div
-          ref={scroller}
-          id="hero-scroller"
-          className={[
-            "absolute inset-0 flex gap-2 overflow-x-auto snap-x snap-mandatory scrollbar-hide",
-            "pl-6 md:pl-12 lg:pl-[calc(var(--page-gutter-wide)+1rem)] xl:pl-[calc(var(--page-gutter-wide)+2rem)]",
-            firstLoaded
-              ? "opacity-100 translate-x-0"
-              : reduceMotion
-              ? "opacity-0"
-              : "opacity-0 translate-x-6",
-            "transition-all duration-500 ease-out",
-          ].join(" ")}
-          /* biome-ignore lint/a11y/noNoninteractiveTabindex: <explanation> */
-          tabIndex={0}
-          style={firstLoaded || reduceMotion ? undefined : { willChange: "transform, opacity" }}
-        >
-          {shown.map((m, i) => (
-            <div
-              key={i}
-              className="shrink-0 snap-start first:snap-always first:pl-0 last:pr-0"
-              style={i === 0 ? { scrollSnapStop: "always" } : undefined}
-            >
-              <div
-                className="relative aspect-[16/10] w-[92vw] md:w-[86vw] lg:w-[82vw] 
-                           max-w-[1400px] rounded-xl overflow-hidden bg-muted"
-              >
-                <SmartImage
-  src={m.url}
-  url={m.url}
-  alt={m.alt || `Image ${i + 1}`}
-  className="h-full w-full object-cover
-             object-[65%_20%] sm:object-[70%_20%] md:object-[72%_18%] lg:object-[75%_15%]"
-  eager={i === 0}
-  decoding="async" fetchPriority="low" width={1600} height={1000} />
+                  {(m.name || m.location) && (
+                    <>
+                      {/* Readability gradient */}
+                      <div className="pointer-events-none absolute inset-0  bg-gradient-to-t from-black/60 via-black/0 to-black/0" />
 
-
-
-
-                {(m.name || m.location) && (
-                  <>
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0" />
-
-                    {m.location && (
-                      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
-                        <p className="px-4 py-2 rounded-full text-white text-base md:text-lg font-semibold tracking-tight bg-black/35 backdrop-blur-md ring-1 ring-white/20 shadow-lg">
-                          {m.location}
-                        </p>
-                        {m.subLocation && (
-                          <p className="mt-1 text-center text-white/80 text-xs md:text-sm font-medium bg-black/25 inline-block px-3 py-1 rounded-full backdrop-blur-md ring-1 ring-white/10">
-                            {m.subLocation}
+                      {/* Location pill + sub-location */}
+                      {m.location && (
+                        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
+                          <p className="px-4 py-2 rounded-full text-white text-base md:text-lg font-semibold tracking-tight bg-black/35 backdrop-blur-md ring-1 ring-white/20 shadow-lg">
+                            {m.location}
                           </p>
-                        )}
-                      </div>
-                    )}
+                          {m.subLocation && (
+                            <p className="mt-1 text-center text-white/80 text-xs md:text-sm font-medium bg-black/25 inline-block px-3 py-1 rounded-full backdrop-blur-md ring-1 ring-white/10">
+                              {m.subLocation}
+                            </p>
+                          )}
+                        </div>
+                      )}
 
-                    {m.location && (
-                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 pointer-events-auto">
-                        <button
-                          type="button"
-                          className="inline-flex items-center justify-center gap-2 px-6 py-3 text-base md:text-lg font-semibold 
-                                     rounded-full shadow-lg transition-all duration-300 ease-out
-                                     bg-[color:var(--color-brand-600)] text-white border border-white/40
-                                     hover:bg-[color:var(--color-brand-700)] hover:scale-105 hover:shadow-xl hover:border-white/60
-                                     active:scale-95 focus:outline-none focus-visible:ring-4 
-                                     focus-visible:ring-[color:var(--color-brand-500)] focus-visible:ring-offset-2 
-                                     focus-visible:ring-offset-black/20"
-                          onClick={() => {
-                            if (!engagedRef.current) engagedRef.current = true;
-                            onShowMore?.(m.location);
-                          }}
-                          aria-label={`Show more about ${m.location}`}
-                        >
-                          Show more ✨
-                        </button>
-                      </div>
-                    )}
+                      {/* CTA */}
+                      {m.location && (
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 pointer-events-auto">
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center gap-2 px-6 py-3 text-base md:text-lg font-semibold rounded-full shadow-lg transition-all duration-300 ease-out bg-[color:var(--color-brand-600)] text-white border border-white/40 hover:bg-[color:var(--color-brand-700)] hover:scale-105 hover:shadow-xl hover:border-white/60 active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--color-brand-500)] focus-visible:ring-offset-2 focus-visible:ring-offset-black/20"
+                            onClick={() => {
+                              if (!engagedRef.current) engagedRef.current = true;
+                              onShowMore?.(m.location);
+                            }}
+                            aria-label={`Show more about ${m.location}`}
+                          >
+                            Show more ✨
+                          </button>
+                        </div>
+                      )}
 
-                    {m.name && (
-                      <p className="absolute bottom-4 right-4 z-10 text-base md:text-lg font-semibold tracking-tight text-white bg-black/35 px-3 py-1 rounded-md backdrop-blur-md ring-1 ring-white/15 pointer-events-none">
-                        {m.name}
-                      </p>
-                    )}
-                  </>
-                )}
+                      {/* Name tag */}
+                      {m.name && (
+                        <p className="absolute bottom-4 right-4 z-10 text-base md:text-lg font-semibold tracking-tight text-white bg-black/35 px-3 py-1 rounded-md backdrop-blur-md ring-1 ring-white/15 pointer-events-none">
+                          {m.name}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
 
-          {/* Sentinel (smaller to match tighter gaps) */}
-          {progressive && count < slides.length && (
-            <div
-              data-carousel-sentinel
-              aria-hidden="true"
-              className="shrink-0 w-3"
-              style={{ scrollSnapAlign: "none" }}
-            />
-          )}
+            {/* Sentinel (smaller to match tighter gaps) */}
+            {progressive && count < slides.length && (
+              <div data-carousel-sentinel aria-hidden="true" className="shrink-0 w-3" style={{ scrollSnapAlign: "none" }} />
+            )}
+          </div>
         </div>
       </div>
     </div>

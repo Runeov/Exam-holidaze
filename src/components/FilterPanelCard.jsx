@@ -1,3 +1,4 @@
+// src/components/FilterPanelCard.jsx
 /** biome-ignore-all lint/a11y/useSemanticElements: <explanation> */
 /** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
 /** biome-ignore-all lint/correctness/useUniqueElementIds: <explanation> */
@@ -5,7 +6,7 @@
 import React, { useEffect } from "react";
 import SearchCTAButton from "../components/SearchCTAButton";
 
-/* Helpers kept (inputs removed as requested, but we retain helpers to avoid cross-file coupling) */
+/* Helpers */
 function toInputDate(d) {
   if (!d) return "";
   const dt = typeof d === "string" ? new Date(d) : d;
@@ -17,7 +18,7 @@ function toInputDate(d) {
 }
 function fromInputDate(s) {
   if (!s) return undefined;
-  const dt = new Date(s + "T00:00:00");
+  const dt = new Date(`${s}T00:00:00`);
   return Number.isNaN(+dt) ? undefined : dt;
 }
 function atLocalMidnight(d = new Date()) {
@@ -25,22 +26,29 @@ function atLocalMidnight(d = new Date()) {
   t.setHours(0, 0, 0, 0);
   return t;
 }
+function nightsBetween(from, to) {
+  if (!from || !to) return 0;
+  const MS = 24 * 60 * 60 * 1000;
+  const a = atLocalMidnight(from).getTime();
+  const b = atLocalMidnight(to).getTime();
+  return Math.max(0, Math.round((b - a) / MS));
+}
 
 export default function FilterPanelCard({
   open,
   onClose, // optional
-  selectedDateRange,      // {from?: Date, to?: Date}
+  selectedDateRange, // {from?: Date, to?: Date}
   setSelectedDateRange,
-  priceRange,             // {min:number, max:number}
+  priceRange, // {min:number, max:number}
   setPriceRange,
-  metaFilters,            // {wifi:boolean, parking:boolean, breakfast:boolean, pets:boolean}
+  metaFilters, // {wifi:boolean, parking:boolean, breakfast:boolean, pets:boolean}
   setMetaFilters,
-  selectedPlace,          // string
+  selectedPlace, // string
   setSelectedPlace,
   minDate = new Date(),
   className = "",
 }) {
-  // Seed today's date by default so dependent sections can render
+  // Seed today's date by default so dependent sections can render.
   useEffect(() => {
     const hasFrom = Boolean(selectedDateRange?.from);
     const hasTo = Boolean(selectedDateRange?.to);
@@ -56,23 +64,38 @@ export default function FilterPanelCard({
   const MAX = 10000;
   const STEP = 50;
 
-  // (Date inputs removed; minStr/fromVal/toVal + onDateChange are unused now but left here if you re-add inputs later)
   const minStr = toInputDate(minDate);
   const fromVal = toInputDate(selectedDateRange?.from);
   const toVal = toInputDate(selectedDateRange?.to);
 
   function onDateChange(which, value) {
-    const next = {
+    const nextRaw = {
       from: which === "from" ? fromInputDate(value) : selectedDateRange?.from,
       to: which === "to" ? fromInputDate(value) : selectedDateRange?.to,
     };
-    setSelectedDateRange(next);
+
+    // Normalize to local midnight and keep range coherent.
+    let from = nextRaw.from ? atLocalMidnight(nextRaw.from) : undefined;
+    let to = nextRaw.to ? atLocalMidnight(nextRaw.to) : undefined;
+
+    if (from && minDate && from < atLocalMidnight(minDate)) from = atLocalMidnight(minDate);
+    if (to && minDate && to < atLocalMidnight(minDate)) to = atLocalMidnight(minDate);
+
+    if (from && to && to < from) {
+      // Keep contiguous range by snapping the other end.
+      if (which === "from") to = from;
+      else from = to;
+    }
+
+    setSelectedDateRange({ from, to });
   }
 
-  // Improve dual-range interaction: bring the "closer" thumbs to front when near.
+  // Improve dual-range interaction: bring the closer thumbs to front when near.
   const closeTogether = (priceRange?.max ?? MAX) - (priceRange?.min ?? MIN) <= STEP * 2;
   const minZ = closeTogether ? 40 : 20;
   const maxZ = closeTogether ? 20 : 40;
+
+  const nights = nightsBetween(selectedDateRange?.from, selectedDateRange?.to);
 
   return (
     <div
@@ -98,8 +121,56 @@ export default function FilterPanelCard({
           />
         </div>
 
-        {/* Dates — inputs removed on request. Keep calendar elsewhere if needed. */}
-        {/* (No From/To <input type="date"> fields here) */}
+        {/* Dates */}
+        <div className="col-span-12 md:col-span-3">
+          <label className="block text-xs text-gray-800 mb-1">Dates</label>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <span className="block text-[11px] text-gray-600 mb-1">From</span>
+              <input
+                id="date-from"
+                type="date"
+                min={minStr}
+                max={toVal || undefined}
+                value={fromVal}
+                onChange={(e) => onDateChange("from", e.target.value)}
+                className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-gray-900
+                           focus:outline-none focus-visible:ring-2
+                           focus-visible:ring-[color:var(--color-brand-600)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                aria-describedby="date-help"
+              />
+            </div>
+            <div>
+              <span className="block text-[11px] text-gray-600 mb-1">To</span>
+              <input
+                id="date-to"
+                type="date"
+                min={fromVal || minStr}
+                value={toVal}
+                onChange={(e) => onDateChange("to", e.target.value)}
+                className="w-full rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-gray-900
+                           focus:outline-none focus-visible:ring-2
+                           focus-visible:ring-[color:var(--color-brand-600)] focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              />
+            </div>
+          </div>
+          <div className="mt-2 flex items-center justify-between">
+            <p id="date-help" className="text-[11px] text-gray-600">
+              {nights} {nights === 1 ? "night" : "nights"}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                const today = toInputDate(new Date());
+                onDateChange("from", today);
+                onDateChange("to", today);
+              }}
+              className="text-[11px] font-medium text-[color:var(--color-brand-700)] hover:underline"
+            >
+              Today
+            </button>
+          </div>
+        </div>
 
         {/* Price Range (dual range + numeric inputs) */}
         <div className="col-span-12 md:col-span-3">

@@ -1,25 +1,37 @@
 // src/components/SearchCTAButton.jsx
-import React from "react";
+import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { encodeSearchParams } from "../utils/SearchParams";
+
 export default function SearchCTAButton({
   selectedPlace,
   selectedDateRange,
   priceRange,
   metaFilters,
   className = "",
+  to = "/venues",
+  onSubmit,
 }) {
   const navigate = useNavigate();
 
+  const filters = useMemo(
+    () => ({
+      selectedPlace: (selectedPlace || "").trim(),
+      selectedDateRange: selectedDateRange || undefined,
+      priceRange: priceRange || { min: 0, max: 9999 },
+      metaFilters: metaFilters || {},
+    }),
+    [selectedPlace, selectedDateRange, priceRange, metaFilters],
+  );
+
   function handleClick() {
-    const qs = encodeSearchParams({
-      selectedPlace,
-      selectedDateRange,
-      priceRange,
-      metaFilters,
-    });
-    const url = qs ? `/search?${qs}` : "/search";
-    navigate(url);
+    if (typeof onSubmit === "function") {
+      onSubmit(filters);
+      return;
+    }
+    const qs = encodeSearchParams(filters);
+    const dest = to || "/venues";
+    navigate(qs ? `${dest}?${qs}` : dest);
   }
 
   return (

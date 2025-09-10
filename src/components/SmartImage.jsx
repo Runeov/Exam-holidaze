@@ -21,7 +21,7 @@ export default function SmartImage({
       className={className}
       loading={eager ? "eager" : "lazy"}
       decoding="async"
-      fetchpriority={fetchPriority ?? (eager ? "high" : "low")}
+      fetchPriority={fetchPriority ?? (eager ? "high" : "low")}
       width={width}
       height={height}
       srcSet={srcSet}

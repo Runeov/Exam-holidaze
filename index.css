@@ -1,5 +1,0 @@
-@import "tailwindcss";
-
-/* index.css */
-.prose :where(h1,h2){ margin-top: 0; }
-html, body, #root { height: 100%; }

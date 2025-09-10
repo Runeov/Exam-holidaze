@@ -1,3 +1,4 @@
+// src/pages/VenuesPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { listVenues } from "../api/venues";
@@ -29,26 +30,26 @@ export default function VenuesPage() {
   const q = searchParams.get("q") || "";
   const page = Math.max(1, parseNum(searchParams.get("page"), 1));
   const sort = searchParams.get("sort") || "created";
-  const order =
-    (searchParams.get("order") || searchParams.get("sortOrder") || "desc").toLowerCase() === "asc"
-      ? "asc"
-      : "desc";
+  const order = (searchParams.get("order") || searchParams.get("sortOrder") || "desc").toLowerCase() === "asc" ? "asc" : "desc";
 
   const [loading, setLoading] = useState(false);
   const [allVenues, setAllVenues] = useState([]);
 
-  // Filters from URL
+  // ---- Filters from URL (compatible with CTA encoder) ----
+  const featureCsv = String(query.features || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const flagFeatures = ["wifi", "parking", "breakfast", "pets"].filter((k) => /^(1|true|yes)$/i.test(String(query[k] || "")));
+  const featuresList = Array.from(new Set([...(featureCsv || []), ...flagFeatures]));
+
   const filters = {
     place: query.place?.toLowerCase(),
     from: query.from ? new Date(query.from) : undefined,
     to: query.to ? new Date(query.to) : undefined,
-    min: query.min ? Number(query.min) : 0,
-    max: query.max ? Number(query.max) : 9999,
-    features: query.features
-      ? Array.isArray(query.features)
-        ? query.features
-        : [query.features]
-      : [],
+    min: query.min != null ? Number(query.min) : query.minPrice != null ? Number(query.minPrice) : 0,
+    max: query.max != null ? Number(query.max) : query.maxPrice != null ? Number(query.maxPrice) : 9999,
+    features: featuresList,
   };
 
   const _hasActiveFilters = Boolean(
@@ -259,7 +260,7 @@ export default function VenuesPage() {
               role="tab"
               aria-selected={true}
               aria-label={`Toggle order: currently ${order.toUpperCase()}`}
-              className="px-3 py-1.5 rounded-full text-sm border bg-white/10 hover:bg-white/20 text-white border-white/20 inline-flex items-center gap-1"
+              className="px-3 py-1.5 rounded-full text-sm border bg-white/10 hover:bg_white/20 text-white border-white/20 inline-flex items-center gap-1"
               onClick={toggleOrder}
               title={`Order: ${order.toUpperCase()}`}
             >
@@ -282,17 +283,17 @@ export default function VenuesPage() {
 
           /* Make each li look like: rounded-xl border border-black/10 bg-surface shadow-sm hover:shadow-md transition */
           .venuespage-cardwrap ul.grid > li {
-            background-color: var(--color-surface, #ffffff); /* bg-surface */
-            border: 1px solid rgba(0,0,0,0.10);             /* border-black/10 */
-            border-radius: 0.75rem;                         /* rounded-xl */
-            box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);       /* shadow-sm */
+            background-color: var(--color-surface, #ffffff);
+            border: 1px solid rgba(0,0,0,0.10);
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
             transition: box-shadow .2s ease, transform .2s ease, background-color .2s ease;
             overflow: hidden;
           }
           .venuespage-cardwrap ul.grid > li:hover {
             box-shadow:
               0 4px 6px -1px rgba(0,0,0,0.10),
-              0 2px 4px -2px rgba(0,0,0,0.10);              /* hover:shadow-md */
+              0 2px 4px -2px rgba(0,0,0,0.10);
           }
           .venuespage-cardwrap ul.grid > li:focus-within {
             outline: 2px solid var(--color-brand-300);
@@ -306,7 +307,7 @@ export default function VenuesPage() {
           ) : pageItems.length > 0 ? (
             <VenueGrid items={pageItems} />
           ) : (
-            <p className="text-white/80">No venues found.</p>
+            <p className="text_white/80">No venues found.</p>
           )}
         </div>
 
@@ -317,7 +318,7 @@ export default function VenuesPage() {
             onClick={goPrev}
             disabled={!canPrev}
             className={[
-              "px-4 py-2 rounded-full border text-sm",
+              "px-4 py-2 rounded_full border text-sm",
               canPrev
                 ? "bg-white/10 text-white border-white/20 hover:bg-white/20"
                 : "bg-white/10 text-white/40 border-white/10 cursor-not-allowed",
@@ -328,7 +329,7 @@ export default function VenuesPage() {
           </button>
 
           <span className="text-sm text-white/80">
-            Page <span className="font-semibold">{safePage}</span> of{" "}
+            Page <span className="font-semibold">{safePage}</span> of {" "}
             <span className="font-semibold">{pageCount || 1}</span>
           </span>
 
@@ -337,7 +338,7 @@ export default function VenuesPage() {
             onClick={goNext}
             disabled={!canNext}
             className={[
-              "px-4 py-2 rounded-full border text-sm",
+              "px-4 py-2 rounded_full border text-sm",
               canNext
                 ? "bg-white/10 text-white border-white/20 hover:bg-white/20"
                 : "bg-white/10 text-white/40 border-white/10 cursor-not-allowed",
